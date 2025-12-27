@@ -13,6 +13,7 @@ import type * as files from "../files.js";
 import type * as packs from "../packs.js";
 import type * as rarities from "../rarities.js";
 import type * as seed from "../seed.js";
+import type * as seedCards from "../seedCards.js";
 import type * as series from "../series.js";
 import type * as sets from "../sets.js";
 import type * as tradePosts from "../tradePosts.js";
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   packs: typeof packs;
   rarities: typeof rarities;
   seed: typeof seed;
+  seedCards: typeof seedCards;
   series: typeof series;
   sets: typeof sets;
   tradePosts: typeof tradePosts;

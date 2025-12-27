@@ -54,7 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           breadcrumbs={getBreadcrumbs()}
         />
 
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto scroll-smooth">
+        <main className="flex-1 p-4 md:p-8 overflow-y-scroll scroll-smooth">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>

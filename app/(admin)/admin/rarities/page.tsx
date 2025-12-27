@@ -6,6 +6,7 @@ import { Plus, Search, Pencil, Trash2, ArrowUpDown, Database } from 'lucide-reac
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { toast } from 'sonner';
 
 export default function RaritiesPage() {
   const rarities = useQuery(api.rarities.list);
@@ -41,9 +42,9 @@ export default function RaritiesPage() {
       setIsSeeding(true);
       try {
         const result = await seedRarities();
-        alert(`Đã thêm ${result.count} độ hiếm thành công!`);
+        toast.success(`Đã thêm ${result.count} độ hiếm thành công!`);
       } catch (error) {
-        alert('Có lỗi xảy ra khi seed dữ liệu');
+        toast.error('Có lỗi xảy ra khi seed dữ liệu');
         console.error(error);
       } finally {
         setIsSeeding(false);

@@ -54,6 +54,7 @@ const RARITIES_DATA = [
   { name: "★★", imageUrl: "https://pokemongohub.net/wp-content/uploads/2024/12/show-9.png" },        // Two Star - Super Rare / Special Art Rare
   { name: "★★★", imageUrl: "https://pokemongohub.net/wp-content/uploads/2024/12/show-8.png" },       // Three Star - Immersive Rare
   { name: "♛", imageUrl: "https://pokemongohub.net/wp-content/uploads/2024/12/show-10.png" },        // Crown - Crown Rare (Gold Art)
+  { name: "Promo", imageUrl: "" },                                                                    // Promo - no specific image
 ];
 
 export const seed = mutation({

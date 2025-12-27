@@ -6,6 +6,7 @@ import { Plus, Search, Pencil, Trash2, ArrowUpDown, Database, ChevronLeft, Chevr
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { toast } from 'sonner';
 
 type SortField = 'name' | 'setCode' | 'packCount' | 'cardCount';
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100, 'all'] as const;
@@ -84,9 +85,9 @@ export default function SetsPage() {
       setIsSeeding(true);
       try {
         const result = await seedAll({});
-        alert(`Seed thành công!\n- ${result.seriesCount} series\n- ${result.setsCount} sets\n- ${result.packsCount} packs`);
+        toast.success(`Seed thành công! ${result.seriesCount} series, ${result.setsCount} sets, ${result.packsCount} packs`);
       } catch (error) {
-        alert('Lỗi khi seed: ' + (error as Error).message);
+        toast.error('Lỗi khi seed: ' + (error as Error).message);
       } finally {
         setIsSeeding(false);
       }
