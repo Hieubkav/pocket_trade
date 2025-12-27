@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowUpDown } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -10,6 +10,23 @@ import { Id } from '@/convex/_generated/dataModel';
 export default function RaritiesPage() {
   const rarities = useQuery(api.rarities.list);
   const removeRarity = useMutation(api.rarities.remove);
+  const [search, setSearch] = useState('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const filteredAndSorted = useMemo(() => {
+    if (!rarities) return [];
+    let result = rarities.filter(r => 
+      r.name.toLowerCase().includes(search.toLowerCase())
+    );
+    result.sort((a, b) => {
+      const aVal = a.name.toLowerCase();
+      const bVal = b.name.toLowerCase();
+      if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return result;
+  }, [rarities, search, sortDir]);
 
   const handleDelete = async (id: Id<"rarities">) => {
     if (confirm('Bạn có chắc muốn xóa độ hiếm này?')) {
@@ -39,6 +56,8 @@ export default function RaritiesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm kiếm độ hiếm..."
               className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
             />
@@ -50,7 +69,15 @@ export default function RaritiesPage() {
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hình ảnh</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tên</th>
+                <th 
+                  onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
+                  className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Tên
+                    <ArrowUpDown size={14} className="text-indigo-500" />
+                  </span>
+                </th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
@@ -59,11 +86,13 @@ export default function RaritiesPage() {
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
-              ) : rarities.length === 0 ? (
+              ) : filteredAndSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-slate-500">Chưa có độ hiếm nào</td>
+                  <td colSpan={3} className="px-4 py-8 text-center text-slate-500">
+                    {search ? 'Không tìm thấy độ hiếm nào' : 'Chưa có độ hiếm nào'}
+                  </td>
                 </tr>
-              ) : rarities.map((rarity) => (
+              ) : filteredAndSorted.map((rarity) => (
                 <tr key={rarity._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4">
                     {rarity.imageUrl ? (
@@ -101,7 +130,7 @@ export default function RaritiesPage() {
 
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {rarities ? `Hiển thị ${rarities.length} độ hiếm` : 'Đang tải...'}
+            {rarities ? `Hiển thị ${filteredAndSorted.length}/${rarities.length} độ hiếm` : 'Đang tải...'}
           </p>
         </div>
       </div>

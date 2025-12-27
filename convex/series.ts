@@ -27,7 +27,6 @@ export const getById = query({
 export const create = mutation({
   args: {
     name: v.string(),
-    imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("series", args);
@@ -38,7 +37,6 @@ export const update = mutation({
   args: {
     id: v.id("series"),
     name: v.string(),
-    imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...data } = args;

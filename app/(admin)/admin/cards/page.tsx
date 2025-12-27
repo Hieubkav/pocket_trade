@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowUpDown } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -17,9 +17,42 @@ const rarityColors: Record<string, string> = {
   '★★★': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
 
+const TYPES = ['Grass', 'Fire', 'Water', 'Lightning', 'Psychic', 'Fighting', 'Darkness', 'Metal', 'Dragon', 'Colorless'];
+
+type SortField = 'name' | 'rarityName' | 'type' | 'cardNumber';
+
 export default function CardsPage() {
   const cards = useQuery(api.cards.list);
   const removeCard = useMutation(api.cards.remove);
+  const [search, setSearch] = useState('');
+  const [filterSupertype, setFilterSupertype] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const filteredAndSorted = useMemo(() => {
+    if (!cards) return [];
+    let result = cards.filter(c => {
+      const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+                          c.cardNumber.toLowerCase().includes(search.toLowerCase());
+      const matchSupertype = !filterSupertype || c.supertype === filterSupertype;
+      const matchType = !filterType || c.type === filterType;
+      return matchSearch && matchSupertype && matchType;
+    });
+    result.sort((a, b) => {
+      let aVal = a[sortField]?.toLowerCase() || '';
+      let bVal = b[sortField]?.toLowerCase() || '';
+      if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return result;
+  }, [cards, search, filterSupertype, filterType, sortField, sortDir]);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
 
   const handleDelete = async (id: Id<"cards">) => {
     if (confirm('Bạn có chắc muốn xóa thẻ này?')) {
@@ -49,22 +82,28 @@ export default function CardsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm kiếm thẻ..."
               className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
             />
           </div>
-          <select className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
+          <select 
+            value={filterSupertype}
+            onChange={(e) => setFilterSupertype(e.target.value)}
+            className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+          >
             <option value="">Tất cả loại</option>
             <option value="pokemon">Pokemon</option>
             <option value="trainer">Trainer</option>
           </select>
-          <select className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
+          <select 
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+          >
             <option value="">Tất cả type</option>
-            <option value="Fire">Fire</option>
-            <option value="Water">Water</option>
-            <option value="Lightning">Lightning</option>
-            <option value="Psychic">Psychic</option>
-            <option value="Grass">Grass</option>
+            {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
 
@@ -72,11 +111,19 @@ export default function CardsPage() {
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Thẻ</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Độ hiếm</th>
+                <th onClick={() => toggleSort('name')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
+                  <span className="inline-flex items-center gap-1">Thẻ <ArrowUpDown size={14} className={sortField === 'name' ? 'text-indigo-500' : ''} /></span>
+                </th>
+                <th onClick={() => toggleSort('rarityName')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
+                  <span className="inline-flex items-center gap-1">Độ hiếm <ArrowUpDown size={14} className={sortField === 'rarityName' ? 'text-indigo-500' : ''} /></span>
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Loại</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Số thẻ</th>
+                <th onClick={() => toggleSort('type')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
+                  <span className="inline-flex items-center gap-1">Type <ArrowUpDown size={14} className={sortField === 'type' ? 'text-indigo-500' : ''} /></span>
+                </th>
+                <th onClick={() => toggleSort('cardNumber')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
+                  <span className="inline-flex items-center gap-1">Số thẻ <ArrowUpDown size={14} className={sortField === 'cardNumber' ? 'text-indigo-500' : ''} /></span>
+                </th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
@@ -85,11 +132,13 @@ export default function CardsPage() {
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
-              ) : cards.length === 0 ? (
+              ) : filteredAndSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Chưa có thẻ nào</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                    {search || filterSupertype || filterType ? 'Không tìm thấy thẻ nào' : 'Chưa có thẻ nào'}
+                  </td>
                 </tr>
-              ) : cards.map((card) => (
+              ) : filteredAndSorted.map((card) => (
                 <tr key={card._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
@@ -138,16 +187,8 @@ export default function CardsPage() {
 
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {cards ? `Hiển thị ${cards.length} thẻ` : 'Đang tải...'}
+            {cards ? `Hiển thị ${filteredAndSorted.length}/${cards.length} thẻ` : 'Đang tải...'}
           </p>
-          <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50" disabled>
-              Trước
-            </button>
-            <button className="px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50" disabled>
-              Sau
-            </button>
-          </div>
         </div>
       </div>
     </div>

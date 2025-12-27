@@ -1,15 +1,46 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowUpDown } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 
+type SortField = 'name' | 'setName' | 'cardCount';
+
 export default function PacksPage() {
   const packs = useQuery(api.packs.list);
+  const sets = useQuery(api.sets.list);
   const removePack = useMutation(api.packs.remove);
+  const [search, setSearch] = useState('');
+  const [filterSet, setFilterSet] = useState('');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const filteredAndSorted = useMemo(() => {
+    if (!packs) return [];
+    let result = packs.filter(p => {
+      const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
+      const matchSet = !filterSet || p.setId === filterSet;
+      return matchSearch && matchSet;
+    });
+    result.sort((a, b) => {
+      let aVal: string | number, bVal: string | number;
+      if (sortField === 'name') { aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); }
+      else if (sortField === 'setName') { aVal = a.setName.toLowerCase(); bVal = b.setName.toLowerCase(); }
+      else { aVal = a.cardCount; bVal = b.cardCount; }
+      if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return result;
+  }, [packs, search, filterSet, sortField, sortDir]);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
 
   const handleDelete = async (id: Id<"packs">) => {
     if (confirm('Bạn có chắc muốn xóa pack này?')) {
@@ -39,12 +70,21 @@ export default function PacksPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm kiếm pack..."
               className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
             />
           </div>
-          <select className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
+          <select 
+            value={filterSet}
+            onChange={(e) => setFilterSet(e.target.value)}
+            className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+          >
             <option value="">Tất cả Set</option>
+            {sets?.map(s => (
+              <option key={s._id} value={s._id}>{s.name}</option>
+            ))}
           </select>
         </div>
 
@@ -52,9 +92,15 @@ export default function PacksPage() {
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pack</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Set</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Số thẻ</th>
+                <th onClick={() => toggleSort('name')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
+                  <span className="inline-flex items-center gap-1">Pack <ArrowUpDown size={14} className={sortField === 'name' ? 'text-indigo-500' : ''} /></span>
+                </th>
+                <th onClick={() => toggleSort('setName')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
+                  <span className="inline-flex items-center gap-1">Set <ArrowUpDown size={14} className={sortField === 'setName' ? 'text-indigo-500' : ''} /></span>
+                </th>
+                <th onClick={() => toggleSort('cardCount')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
+                  <span className="inline-flex items-center gap-1">Số thẻ <ArrowUpDown size={14} className={sortField === 'cardCount' ? 'text-indigo-500' : ''} /></span>
+                </th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
@@ -63,11 +109,13 @@ export default function PacksPage() {
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
-              ) : packs.length === 0 ? (
+              ) : filteredAndSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">Chưa có pack nào</td>
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                    {search || filterSet ? 'Không tìm thấy pack nào' : 'Chưa có pack nào'}
+                  </td>
                 </tr>
-              ) : packs.map((pack) => (
+              ) : filteredAndSorted.map((pack) => (
                 <tr key={pack._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
@@ -107,16 +155,8 @@ export default function PacksPage() {
 
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {packs ? `Hiển thị ${packs.length} packs` : 'Đang tải...'}
+            {packs ? `Hiển thị ${filteredAndSorted.length}/${packs.length} packs` : 'Đang tải...'}
           </p>
-          <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50" disabled>
-              Trước
-            </button>
-            <button className="px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50" disabled>
-              Sau
-            </button>
-          </div>
         </div>
       </div>
     </div>

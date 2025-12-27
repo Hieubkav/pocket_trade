@@ -9,6 +9,7 @@
  */
 
 import type * as cards from "../cards.js";
+import type * as files from "../files.js";
 import type * as packs from "../packs.js";
 import type * as rarities from "../rarities.js";
 import type * as series from "../series.js";
@@ -25,6 +26,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   cards: typeof cards;
+  files: typeof files;
   packs: typeof packs;
   rarities: typeof rarities;
   series: typeof series;

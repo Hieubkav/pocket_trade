@@ -1,10 +1,58 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import ImageUpload from '@/app/components/ImageUpload';
 
 export default function NewCardPage() {
+  const router = useRouter();
+  const raritiesList = useQuery(api.rarities.list);
+  const packsList = useQuery(api.packs.list);
+  const createCard = useMutation(api.cards.create);
+  const markFileUsed = useMutation(api.files.markFileUsed);
+
+  const [name, setName] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [rarityId, setRarityId] = useState<Id<'rarities'> | ''>('');
+  const [supertype, setSupertype] = useState('');
+  const [subtype, setSubtype] = useState('');
+  const [type, setType] = useState('');
+  const [packId, setPackId] = useState<Id<'packs'> | ''>('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !cardNumber.trim() || !rarityId || !supertype || !subtype || !type || !packId || !imageUrl.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const id = await createCard({
+        name: name.trim(),
+        cardNumber: cardNumber.trim(),
+        rarityId: rarityId as Id<'rarities'>,
+        supertype,
+        subtype,
+        type,
+        packId: packId as Id<'packs'>,
+        imageUrl: imageUrl.trim(),
+      });
+      if (imageUrl.includes('convex.cloud')) {
+        await markFileUsed({ url: imageUrl, usedBy: `cards:${id}` });
+      }
+      router.push('/admin/cards');
+    } catch (error) {
+      console.error('Failed to create card:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -21,7 +69,7 @@ export default function NewCardPage() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-        <form className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -29,8 +77,11 @@ export default function NewCardPage() {
               </label>
               <input
                 type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
                 placeholder="VD: Pikachu"
+                required
               />
             </div>
 
@@ -40,8 +91,11 @@ export default function NewCardPage() {
               </label>
               <input
                 type="text"
+                value={cardNumber}
+                onChange={(e) => setCardNumber(e.target.value)}
                 className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
                 placeholder="VD: 001/100"
+                required
               />
             </div>
 
@@ -49,18 +103,18 @@ export default function NewCardPage() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Độ hiếm
               </label>
-              <select className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
+              <select
+                value={rarityId}
+                onChange={(e) => setRarityId(e.target.value as Id<'rarities'>)}
+                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+                required
+              >
                 <option value="">Chọn độ hiếm</option>
-                <option value="◆">◆</option>
-                <option value="◆◆">◆◆</option>
-                <option value="◆◆◆">◆◆◆</option>
-                <option value="◆◆◆◆">◆◆◆◆</option>
-                <option value="★">★</option>
-                <option value="★★">★★</option>
-                <option value="★★★">★★★</option>
-                <option value="♢">♢</option>
-                <option value="Shiny Rare">Shiny Rare</option>
-                <option value="Shiny Super Rare">Shiny Super Rare</option>
+                {raritiesList?.map((rarity) => (
+                  <option key={rarity._id} value={rarity._id}>
+                    {rarity.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -68,7 +122,12 @@ export default function NewCardPage() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Supertype
               </label>
-              <select className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
+              <select
+                value={supertype}
+                onChange={(e) => setSupertype(e.target.value)}
+                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+                required
+              >
                 <option value="">Chọn supertype</option>
                 <option value="pokemon">Pokemon</option>
                 <option value="trainer">Trainer</option>
@@ -79,7 +138,12 @@ export default function NewCardPage() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Subtype
               </label>
-              <select className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
+              <select
+                value={subtype}
+                onChange={(e) => setSubtype(e.target.value)}
+                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+                required
+              >
                 <option value="">Chọn subtype</option>
                 <option value="Basic">Basic</option>
                 <option value="Stage 1">Stage 1</option>
@@ -95,7 +159,12 @@ export default function NewCardPage() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Type
               </label>
-              <select className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+                required
+              >
                 <option value="">Chọn type</option>
                 <option value="Grass">Grass</option>
                 <option value="Fire">Fire</option>
@@ -114,24 +183,28 @@ export default function NewCardPage() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Pack
               </label>
-              <select className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
+              <select
+                value={packId}
+                onChange={(e) => setPackId(e.target.value as Id<'packs'>)}
+                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+                required
+              >
                 <option value="">Chọn pack</option>
-                <option value="pack1">Genetic Apex - Pikachu</option>
-                <option value="pack2">Genetic Apex - Charizard</option>
-                <option value="pack3">Genetic Apex - Mewtwo</option>
+                {packsList?.map((pack) => (
+                  <option key={pack._id} value={pack._id}>
+                    {pack.name}
+                  </option>
+                ))}
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                URL Hình ảnh
-              </label>
-              <input
-                type="text"
-                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
-                placeholder="https://..."
-              />
-            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Hình ảnh
+            </label>
+            <ImageUpload value={imageUrl} onChange={setImageUrl} />
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
@@ -143,9 +216,10 @@ export default function NewCardPage() {
             </Link>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 rounded-lg transition-colors"
+              disabled={isLoading || !imageUrl}
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
             >
-              Tạo thẻ
+              {isLoading ? 'Đang tạo...' : 'Tạo thẻ'}
             </button>
           </div>
         </form>

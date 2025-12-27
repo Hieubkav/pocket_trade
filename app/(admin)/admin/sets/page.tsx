@@ -1,15 +1,48 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowUpDown } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 
+type SortField = 'name' | 'setCode' | 'packCount' | 'cardCount';
+
 export default function SetsPage() {
   const sets = useQuery(api.sets.list);
+  const seriesList = useQuery(api.series.list);
   const removeSet = useMutation(api.sets.remove);
+  const [search, setSearch] = useState('');
+  const [filterSeries, setFilterSeries] = useState('');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const filteredAndSorted = useMemo(() => {
+    if (!sets) return [];
+    let result = sets.filter(s => {
+      const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) || 
+                          s.setCode.toLowerCase().includes(search.toLowerCase());
+      const matchSeries = !filterSeries || s.seriesId === filterSeries;
+      return matchSearch && matchSeries;
+    });
+    result.sort((a, b) => {
+      let aVal: string | number, bVal: string | number;
+      if (sortField === 'name') { aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); }
+      else if (sortField === 'setCode') { aVal = a.setCode.toLowerCase(); bVal = b.setCode.toLowerCase(); }
+      else if (sortField === 'packCount') { aVal = a.packCount; bVal = b.packCount; }
+      else { aVal = a.cardCount; bVal = b.cardCount; }
+      if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return result;
+  }, [sets, search, filterSeries, sortField, sortDir]);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('asc'); }
+  };
 
   const handleDelete = async (id: Id<"sets">) => {
     if (confirm('Bạn có chắc muốn xóa set này?')) {
@@ -39,14 +72,21 @@ export default function SetsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm kiếm set..."
               className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
             />
           </div>
-          <select className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
+          <select 
+            value={filterSeries}
+            onChange={(e) => setFilterSeries(e.target.value)}
+            className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+          >
             <option value="">Tất cả Series</option>
-            <option value="A">A Series</option>
-            <option value="B">B Series</option>
+            {seriesList?.map(s => (
+              <option key={s._id} value={s._id}>{s.name}</option>
+            ))}
           </select>
         </div>
 
@@ -54,11 +94,19 @@ export default function SetsPage() {
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Set</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Mã</th>
+                <th onClick={() => toggleSort('name')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
+                  <span className="inline-flex items-center gap-1">Set <ArrowUpDown size={14} className={sortField === 'name' ? 'text-indigo-500' : ''} /></span>
+                </th>
+                <th onClick={() => toggleSort('setCode')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
+                  <span className="inline-flex items-center gap-1">Mã <ArrowUpDown size={14} className={sortField === 'setCode' ? 'text-indigo-500' : ''} /></span>
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Series</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Packs</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Thẻ</th>
+                <th onClick={() => toggleSort('packCount')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
+                  <span className="inline-flex items-center gap-1">Packs <ArrowUpDown size={14} className={sortField === 'packCount' ? 'text-indigo-500' : ''} /></span>
+                </th>
+                <th onClick={() => toggleSort('cardCount')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
+                  <span className="inline-flex items-center gap-1">Thẻ <ArrowUpDown size={14} className={sortField === 'cardCount' ? 'text-indigo-500' : ''} /></span>
+                </th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
@@ -67,11 +115,13 @@ export default function SetsPage() {
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
-              ) : sets.length === 0 ? (
+              ) : filteredAndSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Chưa có set nào</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                    {search || filterSeries ? 'Không tìm thấy set nào' : 'Chưa có set nào'}
+                  </td>
                 </tr>
-              ) : sets.map((set) => (
+              ) : filteredAndSorted.map((set) => (
                 <tr key={set._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
@@ -117,16 +167,8 @@ export default function SetsPage() {
 
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {sets ? `Hiển thị ${sets.length} sets` : 'Đang tải...'}
+            {sets ? `Hiển thị ${filteredAndSorted.length}/${sets.length} sets` : 'Đang tải...'}
           </p>
-          <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50" disabled>
-              Trước
-            </button>
-            <button className="px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50" disabled>
-              Sau
-            </button>
-          </div>
         </div>
       </div>
     </div>

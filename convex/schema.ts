@@ -11,7 +11,6 @@ export default defineSchema({
   // 2. Series
   series: defineTable({
     name: v.string(), // A Series, B Series...
-    imageUrl: v.optional(v.string()),
   }),
 
   // 3. Card
@@ -159,4 +158,15 @@ export default defineSchema({
     os: v.optional(v.string()), // iOS, Android, Windows, Mac (parse từ userAgent)
     visitedAt: v.number(), // timestamp
   }).index("by_visited_at", ["visitedAt"]),
+
+  // 17. Files (track uploaded files for cleanup)
+  files: defineTable({
+    storageId: v.id("_storage"),
+    url: v.string(),
+    usedBy: v.optional(v.string()), // "rarities:id", "sets:id", etc. null = orphan
+    createdAt: v.number(),
+  })
+    .index("by_storage_id", ["storageId"])
+    .index("by_used_by", ["usedBy"])
+    .index("by_url", ["url"]),
 });

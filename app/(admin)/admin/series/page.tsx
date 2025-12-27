@@ -1,15 +1,45 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowUpDown } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 
+type SortField = 'name' | 'setCount';
+type SortDir = 'asc' | 'desc';
+
 export default function SeriesPage() {
   const seriesList = useQuery(api.series.list);
   const removeSeries = useMutation(api.series.remove);
+  const [search, setSearch] = useState('');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const filteredAndSorted = useMemo(() => {
+    if (!seriesList) return [];
+    let result = seriesList.filter(s => 
+      s.name.toLowerCase().includes(search.toLowerCase())
+    );
+    result.sort((a, b) => {
+      const aVal = sortField === 'name' ? a.name.toLowerCase() : a.setCount;
+      const bVal = sortField === 'name' ? b.name.toLowerCase() : b.setCount;
+      if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return result;
+  }, [seriesList, search, sortField, sortDir]);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
+    }
+  };
 
   const handleDelete = async (id: Id<"series">) => {
     if (confirm('Bạn có chắc muốn xóa series này?')) {
@@ -39,6 +69,8 @@ export default function SeriesPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm kiếm series..."
               className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
             />
@@ -49,8 +81,24 @@ export default function SeriesPage() {
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Series</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Số Sets</th>
+                <th 
+                  onClick={() => toggleSort('name')}
+                  className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Series
+                    <ArrowUpDown size={14} className={sortField === 'name' ? 'text-indigo-500' : ''} />
+                  </span>
+                </th>
+                <th 
+                  onClick={() => toggleSort('setCount')}
+                  className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Số Sets
+                    <ArrowUpDown size={14} className={sortField === 'setCount' ? 'text-indigo-500' : ''} />
+                  </span>
+                </th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
@@ -59,23 +107,16 @@ export default function SeriesPage() {
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
-              ) : seriesList.length === 0 ? (
+              ) : filteredAndSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-slate-500">Chưa có series nào</td>
+                  <td colSpan={3} className="px-4 py-8 text-center text-slate-500">
+                    {search ? 'Không tìm thấy series nào' : 'Chưa có series nào'}
+                  </td>
                 </tr>
-              ) : seriesList.map((series) => (
+              ) : filteredAndSorted.map((series) => (
                 <tr key={series._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4">
-                    <div className="flex items-center gap-3">
-                      {series.imageUrl ? (
-                        <img src={series.imageUrl} alt={series.name} className="h-10 w-10 rounded object-cover" />
-                      ) : (
-                        <div className="h-10 w-10 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
-                          IMG
-                        </div>
-                      )}
-                      <p className="font-medium text-slate-900 dark:text-white">{series.name}</p>
-                    </div>
+                    <p className="font-medium text-slate-900 dark:text-white">{series.name}</p>
                   </td>
                   <td className="px-4 py-4">
                     <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
@@ -106,7 +147,7 @@ export default function SeriesPage() {
 
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {seriesList ? `Hiển thị ${seriesList.length} series` : 'Đang tải...'}
+            {seriesList ? `Hiển thị ${filteredAndSorted.length}/${seriesList.length} series` : 'Đang tải...'}
           </p>
         </div>
       </div>

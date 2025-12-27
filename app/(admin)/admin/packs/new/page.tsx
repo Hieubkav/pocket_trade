@@ -1,10 +1,47 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import ImageUpload from '@/app/components/ImageUpload';
 
 export default function NewPackPage() {
+  const router = useRouter();
+  const setsList = useQuery(api.sets.list);
+  const createPack = useMutation(api.packs.create);
+  const markFileUsed = useMutation(api.files.markFileUsed);
+
+  const [name, setName] = useState('');
+  const [setId, setSetId] = useState<Id<'sets'> | ''>('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !setId || !imageUrl.trim()) return;
+
+    setIsLoading(true);
+    try {
+      const id = await createPack({
+        name: name.trim(),
+        setId: setId as Id<'sets'>,
+        imageUrl: imageUrl.trim(),
+      });
+      if (imageUrl.includes('convex.cloud')) {
+        await markFileUsed({ url: imageUrl, usedBy: `packs:${id}` });
+      }
+      router.push('/admin/packs');
+    } catch (error) {
+      console.error('Failed to create pack:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -21,7 +58,7 @@ export default function NewPackPage() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-        <form className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -29,8 +66,11 @@ export default function NewPackPage() {
               </label>
               <input
                 type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
                 placeholder="VD: Genetic Apex - Pikachu"
+                required
               />
             </div>
 
@@ -38,24 +78,28 @@ export default function NewPackPage() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Set
               </label>
-              <select className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
+              <select
+                value={setId}
+                onChange={(e) => setSetId(e.target.value as Id<'sets'>)}
+                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+                required
+              >
                 <option value="">Chọn Set</option>
-                <option value="set1">Genetic Apex</option>
-                <option value="set2">Mythical Island</option>
-                <option value="set3">Space-Time Smackdown</option>
+                {setsList?.map((set) => (
+                  <option key={set._id} value={set._id}>
+                    {set.name}
+                  </option>
+                ))}
               </select>
             </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                URL Hình ảnh
-              </label>
-              <input
-                type="text"
-                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
-                placeholder="https://..."
-              />
-            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Hình ảnh
+            </label>
+            <ImageUpload value={imageUrl} onChange={setImageUrl} />
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
@@ -67,9 +111,10 @@ export default function NewPackPage() {
             </Link>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 rounded-lg transition-colors"
+              disabled={isLoading || !imageUrl}
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
             >
-              Tạo Pack
+              {isLoading ? 'Đang tạo...' : 'Tạo Pack'}
             </button>
           </div>
         </form>

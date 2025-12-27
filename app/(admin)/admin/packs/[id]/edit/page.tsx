@@ -1,10 +1,74 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import ImageUpload from '@/app/components/ImageUpload';
 
 export default function EditPackPage() {
+  const router = useRouter();
+  const params = useParams();
+  const id = params.id as Id<'packs'>;
+
+  const pack = useQuery(api.packs.getById, { id });
+  const setsList = useQuery(api.sets.list);
+  const updatePack = useMutation(api.packs.update);
+  const markFileUsed = useMutation(api.files.markFileUsed);
+  const deleteFile = useMutation(api.files.deleteFile);
+
+  const [name, setName] = useState('');
+  const [setId, setSetId] = useState<Id<'sets'> | ''>('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const originalImageUrl = useRef('');
+
+  useEffect(() => {
+    if (pack) {
+      setName(pack.name);
+      setSetId(pack.setId);
+      setImageUrl(pack.imageUrl);
+      originalImageUrl.current = pack.imageUrl;
+    }
+  }, [pack]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !setId || !imageUrl.trim()) return;
+
+    setIsLoading(true);
+    try {
+      await updatePack({
+        id,
+        name: name.trim(),
+        setId: setId as Id<'sets'>,
+        imageUrl: imageUrl.trim(),
+      });
+      
+      if (imageUrl !== originalImageUrl.current) {
+        if (originalImageUrl.current.includes('convex.cloud')) {
+          await deleteFile({ url: originalImageUrl.current });
+        }
+        if (imageUrl.includes('convex.cloud')) {
+          await markFileUsed({ url: imageUrl, usedBy: `packs:${id}` });
+        }
+      }
+      
+      router.push('/admin/packs');
+    } catch (error) {
+      console.error('Failed to update pack:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!pack) {
+    return <div className="p-6">Đang tải...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -21,7 +85,7 @@ export default function EditPackPage() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-        <form className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -29,8 +93,10 @@ export default function EditPackPage() {
               </label>
               <input
                 type="text"
-                defaultValue="Genetic Apex - Pikachu"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
+                required
               />
             </div>
 
@@ -38,23 +104,28 @@ export default function EditPackPage() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Set
               </label>
-              <select defaultValue="set1" className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
-                <option value="set1">Genetic Apex</option>
-                <option value="set2">Mythical Island</option>
-                <option value="set3">Space-Time Smackdown</option>
+              <select
+                value={setId}
+                onChange={(e) => setSetId(e.target.value as Id<'sets'>)}
+                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+                required
+              >
+                <option value="">Chọn Set</option>
+                {setsList?.map((set) => (
+                  <option key={set._id} value={set._id}>
+                    {set.name}
+                  </option>
+                ))}
               </select>
             </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                URL Hình ảnh
-              </label>
-              <input
-                type="text"
-                defaultValue="/images/pack-pikachu.png"
-                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
-              />
-            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Hình ảnh
+            </label>
+            <ImageUpload value={imageUrl} onChange={setImageUrl} />
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
@@ -66,9 +137,10 @@ export default function EditPackPage() {
             </Link>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 rounded-lg transition-colors"
+              disabled={isLoading || !imageUrl}
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
             >
-              Lưu thay đổi
+              {isLoading ? 'Đang lưu...' : 'Lưu thay đổi'}
             </button>
           </div>
         </form>
