@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useParams } from 'next/navigation';
-import ChatDetail from '../../components/ChatDetail';
+import ChatDetail from '../../../components/ChatDetail';
 
 const chatData: Record<string, { id: string; name: string; avatar: string; message?: string; time?: string }> = {
   'user-1': { id: 'user-1', name: 'EnRico', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=EnRico' },

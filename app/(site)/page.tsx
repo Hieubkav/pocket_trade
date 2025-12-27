@@ -2,10 +2,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { POKEMON_CARDS } from './data';
-import { SortOption, SortDirection, FilterState } from './types';
-import CardItem from './components/CardItem';
-import SearchAndFilters from './components/SearchAndFilters';
+import { POKEMON_CARDS } from '../data';
+import { SortOption, SortDirection, FilterState } from '../types';
+import CardItem from '../components/CardItem';
+import SearchAndFilters from '../components/SearchAndFilters';
 
 export default function Home() {
   const router = useRouter();

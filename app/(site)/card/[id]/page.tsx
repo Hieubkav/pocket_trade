@@ -1,8 +1,8 @@
 'use client';
 
 import { useRouter, useParams } from 'next/navigation';
-import CardDetail from '../../components/CardDetail';
-import { POKEMON_CARDS } from '../../data';
+import CardDetail from '../../../components/CardDetail';
+import { POKEMON_CARDS } from '../../../data';
 
 export default function CardDetailPage() {
   const router = useRouter();

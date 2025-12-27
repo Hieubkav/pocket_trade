@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import ChatPage from '../components/ChatPage';
+import ChatPage from '../../components/ChatPage';
 
 export default function ChatListPage() {
   const router = useRouter();
