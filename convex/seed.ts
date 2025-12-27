@@ -7,83 +7,107 @@ const SERIES_DATA = [
   { name: "Promo" },
 ];
 
+// Pack images - local paths (public/images/packs/)
+const PACK_IMAGES: Record<string, string> = {
+  "Charizard": "/images/packs/charizard.webp",
+  "Mewtwo": "/images/packs/mewtwo.webp",
+  "Pikachu": "/images/packs/pikachu.webp",
+  "Mew": "/images/packs/mew.png",
+  "Dialga": "/images/packs/dialga.png",
+  "Palkia": "/images/packs/palkia.png",
+  "Arceus": "/images/packs/A2a.webp",
+  "Shiny Rayquaza": "/images/packs/A2b.webp",
+  "Solgaleo": "/images/packs/solgaleo.webp",
+  "Lunala": "/images/packs/lunala.webp",
+  "Ultra Beast": "/images/packs/A3a.webp",
+  "Eevee": "/images/packs/A3b.webp",
+  "Ho-Oh": "/images/packs/ho-oh.webp",
+  "Lugia": "/images/packs/lugia.webp",
+  "Latios & Latias": "/images/packs/A4a.webp",
+  "Deluxe ex": "/images/packs/A4B.webp",
+  "Mega Altaria": "/images/packs/mega-altaria.webp",
+  "Mega Blaziken": "/images/packs/mega-blaziken.webp",
+  "Mega Gyarados": "/images/packs/mega-gyarados.webp",
+  "Crimson Blaze": "/images/packs/B1A.webp",
+};
+
 const SETS_DATA = [
   // A Series - Main Sets
   {
     name: "Genetic Apex",
     setCode: "A1",
     seriesName: "A Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_A1_en_US.webp",
+    imageUrl: "/images/logos/A1.png",
     packs: ["Charizard", "Mewtwo", "Pikachu"],
   },
   {
     name: "Mythical Island",
     setCode: "A1a",
     seriesName: "A Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_A1a_en_US.webp",
+    imageUrl: "/images/logos/A1a.png",
     packs: ["Mew"],
   },
   {
     name: "Space-Time Smackdown",
     setCode: "A2",
     seriesName: "A Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_A2_en_US.webp",
+    imageUrl: "/images/logos/A2.png",
     packs: ["Dialga", "Palkia"],
   },
   {
     name: "Triumphant Light",
     setCode: "A2a",
     seriesName: "A Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_A2a_en_US.webp",
+    imageUrl: "/images/logos/A2a.png",
     packs: ["Arceus"],
   },
   {
     name: "Shining Revelry",
     setCode: "A2b",
     seriesName: "A Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_A2b_en_US.webp",
+    imageUrl: "/images/logos/A2b.png",
     packs: ["Shiny Rayquaza"],
   },
   {
     name: "Celestial Guardians",
     setCode: "A3",
     seriesName: "A Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_A3_en_US.webp",
+    imageUrl: "/images/logos/A3.png",
     packs: ["Solgaleo", "Lunala"],
   },
   {
     name: "Extradimensional Crisis",
     setCode: "A3a",
     seriesName: "A Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_A3a_en_US.webp",
+    imageUrl: "/images/logos/A3a.png",
     packs: ["Ultra Beast"],
   },
   {
     name: "Eevee Grove",
     setCode: "A3b",
     seriesName: "A Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_A3b_en_US.webp",
+    imageUrl: "/images/logos/A3b.png",
     packs: ["Eevee"],
   },
   {
     name: "Wisdom of Sea and Sky",
     setCode: "A4",
     seriesName: "A Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_A4_en_US.webp",
+    imageUrl: "/images/logos/A4.png",
     packs: ["Ho-Oh", "Lugia"],
   },
   {
     name: "Secluded Springs",
     setCode: "A4a",
     seriesName: "A Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_A4a_en_US.webp",
+    imageUrl: "/images/logos/A4a.png",
     packs: ["Latios & Latias"],
   },
   {
     name: "Deluxe Pack ex",
     setCode: "A4b",
     seriesName: "A Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_A4b_en_US.webp",
+    imageUrl: "/images/logos/A4B.webp",
     packs: ["Deluxe ex"],
   },
   // B Series
@@ -91,14 +115,14 @@ const SETS_DATA = [
     name: "Mega Rising",
     setCode: "B1",
     seriesName: "B Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_B1_en_US.webp",
+    imageUrl: "/images/logos/B1.png",
     packs: ["Mega Altaria", "Mega Blaziken", "Mega Gyarados"],
   },
   {
     name: "Crimson Blaze",
     setCode: "B1a",
     seriesName: "B Series",
-    imageUrl: "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/Exp/LOGO_expansion_B1a_en_US.webp",
+    imageUrl: "/images/logos/B1A.webp",
     packs: ["Crimson Blaze"],
   },
   // Promo Sets
@@ -106,14 +130,14 @@ const SETS_DATA = [
     name: "Promo-A",
     setCode: "PROMO-A",
     seriesName: "Promo",
-    imageUrl: "",
+    imageUrl: "/images/logos/P-A.webp",
     packs: [],
   },
   {
     name: "Promo-B",
     setCode: "PROMO-B",
     seriesName: "Promo",
-    imageUrl: "",
+    imageUrl: "/images/logos/P-B.webp",
     packs: [],
   },
 ];
@@ -159,6 +183,7 @@ export const seedAll = mutation({
         await ctx.db.insert("packs", {
           name: packName,
           setId,
+          imageUrl: PACK_IMAGES[packName] || undefined,
         });
       }
     }

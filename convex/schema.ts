@@ -32,6 +32,7 @@ export default defineSchema({
   packs: defineTable({
     name: v.string(),
     setId: v.id("sets"),
+    imageUrl: v.optional(v.string()),
   }).index("by_set", ["setId"]),
 
   // 5. Set

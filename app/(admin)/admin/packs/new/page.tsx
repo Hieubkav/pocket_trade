@@ -15,6 +15,7 @@ export default function NewPackPage() {
 
   const [name, setName] = useState('');
   const [setId, setSetId] = useState<Id<'sets'> | ''>('');
+  const [imageUrl, setImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,6 +27,7 @@ export default function NewPackPage() {
       await createPack({
         name: name.trim(),
         setId: setId as Id<'sets'>,
+        imageUrl: imageUrl.trim() || undefined,
       });
       router.push('/admin/packs');
     } catch (error) {
@@ -84,6 +86,24 @@ export default function NewPackPage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                URL Hình ảnh
+              </label>
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
+                placeholder="https://..."
+              />
+              {imageUrl && (
+                <div className="mt-2">
+                  <img src={imageUrl} alt="Preview" className="h-16 w-auto rounded object-contain" />
+                </div>
+              )}
             </div>
 
           </div>

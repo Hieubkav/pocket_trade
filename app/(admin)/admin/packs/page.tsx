@@ -145,7 +145,16 @@ export default function PacksPage() {
               ) : paginatedData.map((pack) => (
                 <tr key={pack._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4">
-                    <p className="font-medium text-slate-900 dark:text-white">{pack.name}</p>
+                    <div className="flex items-center gap-3">
+                      {pack.imageUrl ? (
+                        <img src={pack.imageUrl} alt={pack.name} className="h-12 w-auto rounded object-contain" />
+                      ) : (
+                        <div className="h-12 w-8 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
+                          IMG
+                        </div>
+                      )}
+                      <p className="font-medium text-slate-900 dark:text-white">{pack.name}</p>
+                    </div>
                   </td>
                   <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{pack.setName}</td>
                   <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{pack.cardCount}</td>

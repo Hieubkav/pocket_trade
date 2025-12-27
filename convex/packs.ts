@@ -32,6 +32,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     setId: v.id("sets"),
+    imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("packs", args);
@@ -43,6 +44,7 @@ export const update = mutation({
     id: v.id("packs"),
     name: v.string(),
     setId: v.id("sets"),
+    imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...data } = args;

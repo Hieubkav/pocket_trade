@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowUpDown, Database } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -10,8 +10,10 @@ import { Id } from '@/convex/_generated/dataModel';
 export default function RaritiesPage() {
   const rarities = useQuery(api.rarities.list);
   const removeRarity = useMutation(api.rarities.remove);
+  const seedRarities = useMutation(api.rarities.seed);
   const [search, setSearch] = useState('');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const filteredAndSorted = useMemo(() => {
     if (!rarities) return [];
@@ -34,6 +36,21 @@ export default function RaritiesPage() {
     }
   };
 
+  const handleSeed = async () => {
+    if (confirm('Thao tác này sẽ xóa tất cả độ hiếm hiện có và thêm dữ liệu mẫu Pokemon TCG Pocket. Bạn có chắc chắn?')) {
+      setIsSeeding(true);
+      try {
+        const result = await seedRarities();
+        alert(`Đã thêm ${result.count} độ hiếm thành công!`);
+      } catch (error) {
+        alert('Có lỗi xảy ra khi seed dữ liệu');
+        console.error(error);
+      } finally {
+        setIsSeeding(false);
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -41,13 +58,23 @@ export default function RaritiesPage() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Độ Hiếm</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Quản lý độ hiếm thẻ bài</p>
         </div>
-        <Link
-          href="/admin/rarities/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors font-medium"
-        >
-          <Plus size={20} />
-          <span>Thêm Độ Hiếm</span>
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleSeed}
+            disabled={isSeeding}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Database size={20} className={isSeeding ? 'animate-spin' : ''} />
+            <span>{isSeeding ? 'Đang seed...' : 'Seed Data'}</span>
+          </button>
+          <Link
+            href="/admin/rarities/new"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors font-medium"
+          >
+            <Plus size={20} />
+            <span>Thêm Độ Hiếm</span>
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">

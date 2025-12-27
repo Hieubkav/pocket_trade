@@ -43,3 +43,36 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+// Pokemon TCG Pocket Rarities Data (images from pokemongohub.net)
+const RARITIES_DATA = [
+  { name: "◆", imageUrl: "https://pokemongohub.net/wp-content/uploads/2024/12/show.png" },           // One Diamond - Common
+  { name: "◆◆", imageUrl: "https://pokemongohub.net/wp-content/uploads/2024/12/show-1.png" },        // Two Diamond - Uncommon
+  { name: "◆◆◆", imageUrl: "https://pokemongohub.net/wp-content/uploads/2024/12/show-2.png" },       // Three Diamond - Rare
+  { name: "◆◆◆◆", imageUrl: "https://pokemongohub.net/wp-content/uploads/2024/12/show-3.png" },      // Four Diamond - Double Rare (Pokemon EX)
+  { name: "★", imageUrl: "https://pokemongohub.net/wp-content/uploads/2024/12/show-4.png" },         // One Star - Art Rare (Full Art)
+  { name: "★★", imageUrl: "https://pokemongohub.net/wp-content/uploads/2024/12/show-9.png" },        // Two Star - Super Rare / Special Art Rare
+  { name: "★★★", imageUrl: "https://pokemongohub.net/wp-content/uploads/2024/12/show-8.png" },       // Three Star - Immersive Rare
+  { name: "♛", imageUrl: "https://pokemongohub.net/wp-content/uploads/2024/12/show-10.png" },        // Crown - Crown Rare (Gold Art)
+];
+
+export const seed = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Xóa dữ liệu cũ
+    const existing = await ctx.db.query("rarities").collect();
+    for (const rarity of existing) {
+      await ctx.db.delete(rarity._id);
+    }
+
+    // Thêm dữ liệu mới
+    for (const rarity of RARITIES_DATA) {
+      await ctx.db.insert("rarities", rarity);
+    }
+
+    return {
+      success: true,
+      count: RARITIES_DATA.length,
+    };
+  },
+});
