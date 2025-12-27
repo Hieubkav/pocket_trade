@@ -31,7 +31,6 @@ export const getById = query({
 export const create = mutation({
   args: {
     name: v.string(),
-    imageUrl: v.string(),
     setId: v.id("sets"),
   },
   handler: async (ctx, args) => {
@@ -43,7 +42,6 @@ export const update = mutation({
   args: {
     id: v.id("packs"),
     name: v.string(),
-    imageUrl: v.string(),
     setId: v.id("sets"),
   },
   handler: async (ctx, args) => {

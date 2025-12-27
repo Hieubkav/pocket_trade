@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import ImageUpload from '@/app/components/ImageUpload';
 
 export default function EditPackPage() {
   const router = useRouter();
@@ -17,27 +16,21 @@ export default function EditPackPage() {
   const pack = useQuery(api.packs.getById, { id });
   const setsList = useQuery(api.sets.list);
   const updatePack = useMutation(api.packs.update);
-  const markFileUsed = useMutation(api.files.markFileUsed);
-  const deleteFile = useMutation(api.files.deleteFile);
 
   const [name, setName] = useState('');
   const [setId, setSetId] = useState<Id<'sets'> | ''>('');
-  const [imageUrl, setImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const originalImageUrl = useRef('');
 
   useEffect(() => {
     if (pack) {
       setName(pack.name);
       setSetId(pack.setId);
-      setImageUrl(pack.imageUrl);
-      originalImageUrl.current = pack.imageUrl;
     }
   }, [pack]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !setId || !imageUrl.trim()) return;
+    if (!name.trim() || !setId) return;
 
     setIsLoading(true);
     try {
@@ -45,18 +38,7 @@ export default function EditPackPage() {
         id,
         name: name.trim(),
         setId: setId as Id<'sets'>,
-        imageUrl: imageUrl.trim(),
       });
-      
-      if (imageUrl !== originalImageUrl.current) {
-        if (originalImageUrl.current.includes('convex.cloud')) {
-          await deleteFile({ url: originalImageUrl.current });
-        }
-        if (imageUrl.includes('convex.cloud')) {
-          await markFileUsed({ url: imageUrl, usedBy: `packs:${id}` });
-        }
-      }
-      
       router.push('/admin/packs');
     } catch (error) {
       console.error('Failed to update pack:', error);
@@ -121,13 +103,6 @@ export default function EditPackPage() {
 
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Hình ảnh
-            </label>
-            <ImageUpload value={imageUrl} onChange={setImageUrl} />
-          </div>
-
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
             <Link
               href="/admin/packs"
@@ -137,7 +112,7 @@ export default function EditPackPage() {
             </Link>
             <button
               type="submit"
-              disabled={isLoading || !imageUrl}
+              disabled={isLoading}
               className="px-4 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
             >
               {isLoading ? 'Đang lưu...' : 'Lưu thay đổi'}

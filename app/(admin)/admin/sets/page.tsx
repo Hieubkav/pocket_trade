@@ -2,21 +2,27 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowUpDown, Database, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 
 type SortField = 'name' | 'setCode' | 'packCount' | 'cardCount';
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100, 'all'] as const;
+type PageSize = typeof PAGE_SIZE_OPTIONS[number];
 
 export default function SetsPage() {
   const sets = useQuery(api.sets.list);
   const seriesList = useQuery(api.series.list);
   const removeSet = useMutation(api.sets.remove);
+  const seedAll = useMutation(api.seed.seedAll);
   const [search, setSearch] = useState('');
   const [filterSeries, setFilterSeries] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [isSeeding, setIsSeeding] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<PageSize>(10);
 
   const filteredAndSorted = useMemo(() => {
     if (!sets) return [];
@@ -39,6 +45,29 @@ export default function SetsPage() {
     return result;
   }, [sets, search, filterSeries, sortField, sortDir]);
 
+  const totalItems = filteredAndSorted.length;
+  const totalPages = pageSize === 'all' ? 1 : Math.ceil(totalItems / pageSize);
+  const paginatedData = useMemo(() => {
+    if (pageSize === 'all') return filteredAndSorted;
+    const start = (currentPage - 1) * pageSize;
+    return filteredAndSorted.slice(start, start + pageSize);
+  }, [filteredAndSorted, currentPage, pageSize]);
+
+  const handlePageSizeChange = (newSize: PageSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
+
+  const handleFilterSeries = (value: string) => {
+    setFilterSeries(value);
+    setCurrentPage(1);
+  };
+
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
     else { setSortField(field); setSortDir('asc'); }
@@ -50,6 +79,20 @@ export default function SetsPage() {
     }
   };
 
+  const handleSeed = async () => {
+    if (confirm('Seed dữ liệu Pokemon TCG Pocket? Dữ liệu cũ sẽ bị xóa.')) {
+      setIsSeeding(true);
+      try {
+        const result = await seedAll({});
+        alert(`Seed thành công!\n- ${result.seriesCount} series\n- ${result.setsCount} sets\n- ${result.packsCount} packs`);
+      } catch (error) {
+        alert('Lỗi khi seed: ' + (error as Error).message);
+      } finally {
+        setIsSeeding(false);
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -57,13 +100,23 @@ export default function SetsPage() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Sets</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Quản lý bộ sưu tập thẻ</p>
         </div>
-        <Link
-          href="/admin/sets/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors font-medium"
-        >
-          <Plus size={20} />
-          <span>Thêm Set</span>
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={handleSeed}
+            disabled={isSeeding}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50"
+          >
+            <Database size={20} />
+            <span>{isSeeding ? 'Đang seed...' : 'Seed Data'}</span>
+          </button>
+          <Link
+            href="/admin/sets/new"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors font-medium"
+          >
+            <Plus size={20} />
+            <span>Thêm Set</span>
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
@@ -73,14 +126,14 @@ export default function SetsPage() {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               placeholder="Tìm kiếm set..."
               className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
             />
           </div>
           <select 
             value={filterSeries}
-            onChange={(e) => setFilterSeries(e.target.value)}
+            onChange={(e) => handleFilterSeries(e.target.value)}
             className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
           >
             <option value="">Tất cả Series</option>
@@ -121,7 +174,7 @@ export default function SetsPage() {
                     {search || filterSeries ? 'Không tìm thấy set nào' : 'Chưa có set nào'}
                   </td>
                 </tr>
-              ) : filteredAndSorted.map((set) => (
+              ) : paginatedData.map((set) => (
                 <tr key={set._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
@@ -165,10 +218,60 @@ export default function SetsPage() {
           </table>
         </div>
 
-        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {sets ? `Hiển thị ${filteredAndSorted.length}/${sets.length} sets` : 'Đang tải...'}
-          </p>
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500 dark:text-slate-400">Hiển thị</span>
+            <select
+              value={pageSize}
+              onChange={(e) => handlePageSizeChange(e.target.value === 'all' ? 'all' : Number(e.target.value) as PageSize)}
+              className="h-8 px-2 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+            >
+              {PAGE_SIZE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option === 'all' ? 'Tất cả' : option}
+                </option>
+              ))}
+            </select>
+            <span className="text-sm text-slate-500 dark:text-slate-400">
+              / {totalItems} sets
+            </span>
+          </div>
+          
+          {pageSize !== 'all' && totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed dark:text-slate-200"
+              >
+                Đầu
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-1 rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed dark:text-slate-200"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="px-3 py-1 text-sm text-slate-600 dark:text-slate-400">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-1 rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed dark:text-slate-200"
+              >
+                <ChevronRight size={16} />
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed dark:text-slate-200"
+              >
+                Cuối
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -7,33 +7,26 @@ import { ArrowLeft } from 'lucide-react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import ImageUpload from '@/app/components/ImageUpload';
 
 export default function NewPackPage() {
   const router = useRouter();
   const setsList = useQuery(api.sets.list);
   const createPack = useMutation(api.packs.create);
-  const markFileUsed = useMutation(api.files.markFileUsed);
 
   const [name, setName] = useState('');
   const [setId, setSetId] = useState<Id<'sets'> | ''>('');
-  const [imageUrl, setImageUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !setId || !imageUrl.trim()) return;
+    if (!name.trim() || !setId) return;
 
     setIsLoading(true);
     try {
-      const id = await createPack({
+      await createPack({
         name: name.trim(),
         setId: setId as Id<'sets'>,
-        imageUrl: imageUrl.trim(),
       });
-      if (imageUrl.includes('convex.cloud')) {
-        await markFileUsed({ url: imageUrl, usedBy: `packs:${id}` });
-      }
       router.push('/admin/packs');
     } catch (error) {
       console.error('Failed to create pack:', error);
@@ -95,13 +88,6 @@ export default function NewPackPage() {
 
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-              Hình ảnh
-            </label>
-            <ImageUpload value={imageUrl} onChange={setImageUrl} />
-          </div>
-
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
             <Link
               href="/admin/packs"
@@ -111,7 +97,7 @@ export default function NewPackPage() {
             </Link>
             <button
               type="submit"
-              disabled={isLoading || !imageUrl}
+              disabled={isLoading}
               className="px-4 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
             >
               {isLoading ? 'Đang tạo...' : 'Tạo Pack'}

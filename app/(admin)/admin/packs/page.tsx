@@ -2,12 +2,14 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2, ArrowUpDown } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 
 type SortField = 'name' | 'setName' | 'cardCount';
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100, 'all'] as const;
+type PageSize = typeof PAGE_SIZE_OPTIONS[number];
 
 export default function PacksPage() {
   const packs = useQuery(api.packs.list);
@@ -17,6 +19,8 @@ export default function PacksPage() {
   const [filterSet, setFilterSet] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<PageSize>(10);
 
   const filteredAndSorted = useMemo(() => {
     if (!packs) return [];
@@ -36,6 +40,29 @@ export default function PacksPage() {
     });
     return result;
   }, [packs, search, filterSet, sortField, sortDir]);
+
+  const totalItems = filteredAndSorted.length;
+  const totalPages = pageSize === 'all' ? 1 : Math.ceil(totalItems / pageSize);
+  const paginatedData = useMemo(() => {
+    if (pageSize === 'all') return filteredAndSorted;
+    const start = (currentPage - 1) * pageSize;
+    return filteredAndSorted.slice(start, start + pageSize);
+  }, [filteredAndSorted, currentPage, pageSize]);
+
+  const handlePageSizeChange = (newSize: PageSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  };
+
+  const handleFilterSet = (value: string) => {
+    setFilterSet(value);
+    setCurrentPage(1);
+  };
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -71,14 +98,14 @@ export default function PacksPage() {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearch(e.target.value)}
               placeholder="Tìm kiếm pack..."
               className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
             />
           </div>
           <select 
             value={filterSet}
-            onChange={(e) => setFilterSet(e.target.value)}
+            onChange={(e) => handleFilterSet(e.target.value)}
             className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
           >
             <option value="">Tất cả Set</option>
@@ -115,19 +142,10 @@ export default function PacksPage() {
                     {search || filterSet ? 'Không tìm thấy pack nào' : 'Chưa có pack nào'}
                   </td>
                 </tr>
-              ) : filteredAndSorted.map((pack) => (
+              ) : paginatedData.map((pack) => (
                 <tr key={pack._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4">
-                    <div className="flex items-center gap-3">
-                      {pack.imageUrl ? (
-                        <img src={pack.imageUrl} alt={pack.name} className="h-12 w-9 rounded object-cover" />
-                      ) : (
-                        <div className="h-12 w-9 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
-                          IMG
-                        </div>
-                      )}
-                      <p className="font-medium text-slate-900 dark:text-white">{pack.name}</p>
-                    </div>
+                    <p className="font-medium text-slate-900 dark:text-white">{pack.name}</p>
                   </td>
                   <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{pack.setName}</td>
                   <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{pack.cardCount}</td>
@@ -153,10 +171,60 @@ export default function PacksPage() {
           </table>
         </div>
 
-        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {packs ? `Hiển thị ${filteredAndSorted.length}/${packs.length} packs` : 'Đang tải...'}
-          </p>
+        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500 dark:text-slate-400">Hiển thị</span>
+            <select
+              value={pageSize}
+              onChange={(e) => handlePageSizeChange(e.target.value === 'all' ? 'all' : Number(e.target.value) as PageSize)}
+              className="h-8 px-2 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+            >
+              {PAGE_SIZE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option === 'all' ? 'Tất cả' : option}
+                </option>
+              ))}
+            </select>
+            <span className="text-sm text-slate-500 dark:text-slate-400">
+              / {totalItems} packs
+            </span>
+          </div>
+          
+          {pageSize !== 'all' && totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed dark:text-slate-200"
+              >
+                Đầu
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-1 rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed dark:text-slate-200"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="px-3 py-1 text-sm text-slate-600 dark:text-slate-400">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-1 rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed dark:text-slate-200"
+              >
+                <ChevronRight size={16} />
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="px-2 py-1 text-sm rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed dark:text-slate-200"
+              >
+                Cuối
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
