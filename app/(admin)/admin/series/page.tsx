@@ -3,13 +3,20 @@
 import React from 'react';
 import Link from 'next/link';
 import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
-
-const seriesList = [
-  { id: '1', name: 'A Series', imageUrl: '/images/series-a.png', setCount: 4 },
-  { id: '2', name: 'B Series', imageUrl: '/images/series-b.png', setCount: 0 },
-];
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 export default function SeriesPage() {
+  const seriesList = useQuery(api.series.list);
+  const removeSeries = useMutation(api.series.remove);
+
+  const handleDelete = async (id: Id<"series">) => {
+    if (confirm('Bạn có chắc muốn xóa series này?')) {
+      await removeSeries({ id });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -48,13 +55,25 @@ export default function SeriesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {seriesList.map((series) => (
-                <tr key={series.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+              {!seriesList ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                </tr>
+              ) : seriesList.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-slate-500">Chưa có series nào</td>
+                </tr>
+              ) : seriesList.map((series) => (
+                <tr key={series._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
-                        IMG
-                      </div>
+                      {series.imageUrl ? (
+                        <img src={series.imageUrl} alt={series.name} className="h-10 w-10 rounded object-cover" />
+                      ) : (
+                        <div className="h-10 w-10 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
+                          IMG
+                        </div>
+                      )}
                       <p className="font-medium text-slate-900 dark:text-white">{series.name}</p>
                     </div>
                   </td>
@@ -66,12 +85,15 @@ export default function SeriesPage() {
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-end gap-1">
                       <Link 
-                        href={`/admin/series/${series.id}/edit`}
+                        href={`/admin/series/${series._id}/edit`}
                         className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                       >
                         <Pencil size={16} />
                       </Link>
-                      <button className="p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => handleDelete(series._id)}
+                        className="p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      >
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -83,7 +105,9 @@ export default function SeriesPage() {
         </div>
 
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Hiển thị 1-{seriesList.length} của {seriesList.length} series</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {seriesList ? `Hiển thị ${seriesList.length} series` : 'Đang tải...'}
+          </p>
         </div>
       </div>
     </div>

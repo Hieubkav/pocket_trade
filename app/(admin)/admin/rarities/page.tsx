@@ -3,19 +3,20 @@
 import React from 'react';
 import Link from 'next/link';
 import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
-
-const rarities = [
-  { id: '1', name: '◆', imageUrl: '/images/rarity-1.png' },
-  { id: '2', name: '◆◆', imageUrl: '/images/rarity-2.png' },
-  { id: '3', name: '◆◆◆', imageUrl: '/images/rarity-3.png' },
-  { id: '4', name: '◆◆◆◆', imageUrl: '/images/rarity-4.png' },
-  { id: '5', name: '★', imageUrl: '/images/rarity-star-1.png' },
-  { id: '6', name: '★★', imageUrl: '/images/rarity-star-2.png' },
-  { id: '7', name: '★★★', imageUrl: '/images/rarity-star-3.png' },
-  { id: '8', name: '♢', imageUrl: '/images/rarity-crown.png' },
-];
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 export default function RaritiesPage() {
+  const rarities = useQuery(api.rarities.list);
+  const removeRarity = useMutation(api.rarities.remove);
+
+  const handleDelete = async (id: Id<"rarities">) => {
+    if (confirm('Bạn có chắc muốn xóa độ hiếm này?')) {
+      await removeRarity({ id });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -54,12 +55,24 @@ export default function RaritiesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {rarities.map((rarity) => (
-                <tr key={rarity.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+              {!rarities ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                </tr>
+              ) : rarities.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-slate-500">Chưa có độ hiếm nào</td>
+                </tr>
+              ) : rarities.map((rarity) => (
+                <tr key={rarity._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4">
-                    <div className="h-10 w-10 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
-                      IMG
-                    </div>
+                    {rarity.imageUrl ? (
+                      <img src={rarity.imageUrl} alt={rarity.name} className="h-10 w-10 rounded object-cover" />
+                    ) : (
+                      <div className="h-10 w-10 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
+                        IMG
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-4">
                     <p className="font-medium text-slate-900 dark:text-white text-lg">{rarity.name}</p>
@@ -67,12 +80,15 @@ export default function RaritiesPage() {
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-end gap-1">
                       <Link 
-                        href={`/admin/rarities/${rarity.id}/edit`}
+                        href={`/admin/rarities/${rarity._id}/edit`}
                         className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                       >
                         <Pencil size={16} />
                       </Link>
-                      <button className="p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => handleDelete(rarity._id)}
+                        className="p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      >
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -84,7 +100,9 @@ export default function RaritiesPage() {
         </div>
 
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Hiển thị 1-{rarities.length} của {rarities.length} độ hiếm</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {rarities ? `Hiển thị ${rarities.length} độ hiếm` : 'Đang tải...'}
+          </p>
         </div>
       </div>
     </div>

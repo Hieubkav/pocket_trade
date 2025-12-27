@@ -3,14 +3,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
-
-const cards = [
-  { id: '1', name: 'Pikachu', rarity: '◆◆', supertype: 'pokemon', subtype: 'Basic', type: 'Lightning', packId: 'pack1', cardNumber: '001/100', imageUrl: '/images/pikachu.png' },
-  { id: '2', name: 'Charizard ex', rarity: '★★★', supertype: 'pokemon', subtype: 'ex', type: 'Fire', packId: 'pack1', cardNumber: '006/100', imageUrl: '/images/charizard.png' },
-  { id: '3', name: 'Mewtwo', rarity: '◆◆◆◆', supertype: 'pokemon', subtype: 'Basic', type: 'Psychic', packId: 'pack2', cardNumber: '150/150', imageUrl: '/images/mewtwo.png' },
-  { id: '4', name: 'Professor Oak', rarity: '◆', supertype: 'trainer', subtype: 'Supporter', type: 'Colorless', packId: 'pack1', cardNumber: '080/100', imageUrl: '/images/oak.png' },
-  { id: '5', name: 'Blastoise', rarity: '◆◆◆', supertype: 'pokemon', subtype: 'Stage 2', type: 'Water', packId: 'pack1', cardNumber: '009/100', imageUrl: '/images/blastoise.png' },
-];
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 const rarityColors: Record<string, string> = {
   '◆': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
@@ -23,6 +18,15 @@ const rarityColors: Record<string, string> = {
 };
 
 export default function CardsPage() {
+  const cards = useQuery(api.cards.list);
+  const removeCard = useMutation(api.cards.remove);
+
+  const handleDelete = async (id: Id<"cards">) => {
+    if (confirm('Bạn có chắc muốn xóa thẻ này?')) {
+      await removeCard({ id });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -77,13 +81,25 @@ export default function CardsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {cards.map((card) => (
-                <tr key={card.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+              {!cards ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                </tr>
+              ) : cards.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Chưa có thẻ nào</td>
+                </tr>
+              ) : cards.map((card) => (
+                <tr key={card._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-12 w-9 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
-                        IMG
-                      </div>
+                      {card.imageUrl ? (
+                        <img src={card.imageUrl} alt={card.name} className="h-12 w-9 rounded object-cover" />
+                      ) : (
+                        <div className="h-12 w-9 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
+                          IMG
+                        </div>
+                      )}
                       <div>
                         <p className="font-medium text-slate-900 dark:text-white">{card.name}</p>
                         <p className="text-sm text-slate-500 dark:text-slate-400">{card.subtype}</p>
@@ -91,8 +107,8 @@ export default function CardsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${rarityColors[card.rarity] || 'bg-slate-100 text-slate-700'}`}>
-                      {card.rarity}
+                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${rarityColors[card.rarityName] || 'bg-slate-100 text-slate-700'}`}>
+                      {card.rarityName}
                     </span>
                   </td>
                   <td className="px-4 py-4 text-slate-600 dark:text-slate-400 capitalize">{card.supertype}</td>
@@ -101,12 +117,15 @@ export default function CardsPage() {
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-end gap-1">
                       <Link 
-                        href={`/admin/cards/${card.id}/edit`}
+                        href={`/admin/cards/${card._id}/edit`}
                         className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                       >
                         <Pencil size={16} />
                       </Link>
-                      <button className="p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => handleDelete(card._id)}
+                        className="p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      >
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -118,7 +137,9 @@ export default function CardsPage() {
         </div>
 
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Hiển thị 1-5 của 5 thẻ</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {cards ? `Hiển thị ${cards.length} thẻ` : 'Đang tải...'}
+          </p>
           <div className="flex items-center gap-2">
             <button className="px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50" disabled>
               Trước

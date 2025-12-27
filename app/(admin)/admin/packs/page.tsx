@@ -3,16 +3,20 @@
 import React from 'react';
 import Link from 'next/link';
 import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
-
-const packs = [
-  { id: '1', name: 'Genetic Apex - Pikachu', imageUrl: '/images/pack-pikachu.png', setName: 'Genetic Apex', cardCount: 68 },
-  { id: '2', name: 'Genetic Apex - Charizard', imageUrl: '/images/pack-charizard.png', setName: 'Genetic Apex', cardCount: 68 },
-  { id: '3', name: 'Genetic Apex - Mewtwo', imageUrl: '/images/pack-mewtwo.png', setName: 'Genetic Apex', cardCount: 68 },
-  { id: '4', name: 'Mythical Island', imageUrl: '/images/pack-mythical.png', setName: 'Mythical Island', cardCount: 86 },
-  { id: '5', name: 'Space-Time Smackdown - Dialga', imageUrl: '/images/pack-dialga.png', setName: 'Space-Time Smackdown', cardCount: 72 },
-];
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 export default function PacksPage() {
+  const packs = useQuery(api.packs.list);
+  const removePack = useMutation(api.packs.remove);
+
+  const handleDelete = async (id: Id<"packs">) => {
+    if (confirm('Bạn có chắc muốn xóa pack này?')) {
+      await removePack({ id });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -41,9 +45,6 @@ export default function PacksPage() {
           </div>
           <select className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
             <option value="">Tất cả Set</option>
-            <option value="genetic-apex">Genetic Apex</option>
-            <option value="mythical-island">Mythical Island</option>
-            <option value="space-time">Space-Time Smackdown</option>
           </select>
         </div>
 
@@ -58,13 +59,25 @@ export default function PacksPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {packs.map((pack) => (
-                <tr key={pack.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+              {!packs ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                </tr>
+              ) : packs.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">Chưa có pack nào</td>
+                </tr>
+              ) : packs.map((pack) => (
+                <tr key={pack._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-12 w-9 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
-                        IMG
-                      </div>
+                      {pack.imageUrl ? (
+                        <img src={pack.imageUrl} alt={pack.name} className="h-12 w-9 rounded object-cover" />
+                      ) : (
+                        <div className="h-12 w-9 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
+                          IMG
+                        </div>
+                      )}
                       <p className="font-medium text-slate-900 dark:text-white">{pack.name}</p>
                     </div>
                   </td>
@@ -73,12 +86,15 @@ export default function PacksPage() {
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-end gap-1">
                       <Link 
-                        href={`/admin/packs/${pack.id}/edit`}
+                        href={`/admin/packs/${pack._id}/edit`}
                         className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                       >
                         <Pencil size={16} />
                       </Link>
-                      <button className="p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => handleDelete(pack._id)}
+                        className="p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      >
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -90,7 +106,9 @@ export default function PacksPage() {
         </div>
 
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Hiển thị 1-5 của 5 packs</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {packs ? `Hiển thị ${packs.length} packs` : 'Đang tải...'}
+          </p>
           <div className="flex items-center gap-2">
             <button className="px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50" disabled>
               Trước

@@ -8,7 +8,14 @@
  * @module
  */
 
+import type * as cards from "../cards.js";
+import type * as packs from "../packs.js";
+import type * as rarities from "../rarities.js";
+import type * as series from "../series.js";
+import type * as sets from "../sets.js";
+import type * as tradePosts from "../tradePosts.js";
 import type * as traders from "../traders.js";
+import type * as visitors from "../visitors.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +24,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  cards: typeof cards;
+  packs: typeof packs;
+  rarities: typeof rarities;
+  series: typeof series;
+  sets: typeof sets;
+  tradePosts: typeof tradePosts;
   traders: typeof traders;
+  visitors: typeof visitors;
 }>;
 
 /**
