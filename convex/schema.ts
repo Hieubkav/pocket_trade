@@ -139,6 +139,9 @@ export default defineSchema({
     userAgent: v.string(),
     pageUrl: v.string(),
     referrer: v.optional(v.string()),
+    country: v.optional(v.string()), // Lookup từ IP khi tạo record
+    device: v.optional(v.string()), // mobile, desktop, tablet (parse từ userAgent)
+    os: v.optional(v.string()), // iOS, Android, Windows, Mac (parse từ userAgent)
     visitedAt: v.number(), // timestamp
   }).index("by_visited_at", ["visitedAt"]),
 });

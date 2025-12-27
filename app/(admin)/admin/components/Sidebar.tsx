@@ -9,7 +9,12 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  FileText,
+  CreditCard,
+  Package,
+  Layers,
+  ArrowLeftRight,
+  Calendar,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -32,8 +37,13 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Tổng Quan', href: '/admin' },
-    { id: 'posts', icon: FileText, label: 'Bài viết', href: '/admin/posts' },
-    { id: 'users', icon: Users, label: 'Người dùng', href: '/admin/users' },
+    { id: 'cards', icon: CreditCard, label: 'Thẻ Bài', href: '/admin/cards' },
+    { id: 'packs', icon: Package, label: 'Packs', href: '/admin/packs' },
+    { id: 'sets', icon: Layers, label: 'Sets', href: '/admin/sets' },
+    { id: 'traders', icon: Users, label: 'Traders', href: '/admin/traders' },
+    { id: 'trade-posts', icon: ArrowLeftRight, label: 'Trade Posts', href: '/admin/trade-posts' },
+    { id: 'events', icon: Calendar, label: 'Sự Kiện', href: '/admin/events' },
+    { id: 'admins', icon: ShieldCheck, label: 'Admins', href: '/admin/admins' },
     { id: 'settings', icon: Settings, label: 'Cài Đặt', href: '/admin/settings' },
   ];
 
