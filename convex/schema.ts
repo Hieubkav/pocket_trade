@@ -59,7 +59,10 @@ export default defineSchema({
     avatarUrl: v.optional(v.string()),
     legitPoint: v.number(), // default 0
     friendCode: v.optional(v.string()),
-  }).index("by_email", ["email"]),
+    status: v.optional(v.string()), // "active" | "banned", default "active"
+  })
+    .index("by_email", ["email"])
+    .index("by_status", ["status"]),
 
   // 8. Trade-post
   tradePosts: defineTable({

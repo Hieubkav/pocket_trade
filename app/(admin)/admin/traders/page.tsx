@@ -1,16 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
-
-const traders = [
-  { id: '1', name: 'Nguyễn Văn A', email: 'nguyenvana@gmail.com', avatarUrl: null, legitPoint: 150, friendCode: '1234-5678-9012', tradesCount: 45 },
-  { id: '2', name: 'Trần Thị B', email: 'tranthib@gmail.com', avatarUrl: null, legitPoint: 520, friendCode: '2345-6789-0123', tradesCount: 128 },
-  { id: '3', name: 'Lê Văn C', email: 'levanc@gmail.com', avatarUrl: null, legitPoint: 80, friendCode: '3456-7890-1234', tradesCount: 67 },
-  { id: '4', name: 'Phạm Thị D', email: 'phamthid@gmail.com', avatarUrl: null, legitPoint: 1200, friendCode: '4567-8901-2345', tradesCount: 256 },
-  { id: '5', name: 'Hoàng Văn E', email: 'hoangvane@gmail.com', avatarUrl: null, legitPoint: 350, friendCode: '5678-9012-3456', tradesCount: 89 },
-];
+import { Plus, Search, Pencil, Trash2, Ban, CheckCircle, Info } from 'lucide-react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 const getRank = (legitPoint: number) => {
   if (legitPoint > 1000) return { name: 'Kim Cương', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400' };
@@ -21,6 +16,21 @@ const getRank = (legitPoint: number) => {
 };
 
 export default function TradersPage() {
+  const traders = useQuery(api.traders.list);
+  const updateStatus = useMutation(api.traders.updateStatus);
+  const [statusFilter, setStatusFilter] = useState<string>('');
+
+  const handleToggleBan = async (id: Id<"traders">, currentStatus: string | undefined) => {
+    const newStatus = currentStatus === 'banned' ? 'active' : 'banned';
+    await updateStatus({ id, status: newStatus });
+  };
+
+  const filteredTraders = traders?.filter(trader => {
+    if (!statusFilter) return true;
+    const traderStatus = trader.status || 'active';
+    return traderStatus === statusFilter;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -37,6 +47,18 @@ export default function TradersPage() {
         </Link>
       </div>
 
+      <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm">
+        <Info size={16} className="text-blue-500 mt-0.5 flex-shrink-0" />
+        <div className="text-blue-700 dark:text-blue-300">
+          <span className="font-medium">Quy tắc xếp hạng:</span>{' '}
+          <span className="text-stone-600 dark:text-stone-400">Sắt (&lt;100)</span> → 
+          <span className="text-orange-600 dark:text-orange-400"> Đồng (100-200)</span> → 
+          <span className="text-slate-500 dark:text-slate-400"> Bạc (201-500)</span> → 
+          <span className="text-yellow-600 dark:text-yellow-400"> Vàng (501-1000)</span> → 
+          <span className="text-cyan-600 dark:text-cyan-400"> Kim Cương (&gt;1000)</span>
+        </div>
+      </div>
+
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
@@ -47,6 +69,15 @@ export default function TradersPage() {
               className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
             />
           </div>
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="active">Hoạt động</option>
+            <option value="banned">Đã cấm</option>
+          </select>
           <select className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
             <option value="">Tất cả Rank</option>
             <option value="diamond">Kim Cương</option>
@@ -65,15 +96,24 @@ export default function TradersPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Friend Code</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Legit Point</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rank</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trades</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trạng thái</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-              {traders.map((trader) => {
+              {!filteredTraders ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                </tr>
+              ) : filteredTraders.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Không có trader nào</td>
+                </tr>
+              ) : filteredTraders.map((trader) => {
                 const rank = getRank(trader.legitPoint);
+                const isBanned = trader.status === 'banned';
                 return (
-                  <tr key={trader.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <tr key={trader._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isBanned ? 'opacity-60' : ''}`}>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
@@ -89,7 +129,7 @@ export default function TradersPage() {
                     </td>
                     <td className="px-4 py-4">
                       <code className="text-sm text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
-                        {trader.friendCode}
+                        {trader.friendCode || '-'}
                       </code>
                     </td>
                     <td className="px-4 py-4 text-slate-600 dark:text-slate-400 font-medium">{trader.legitPoint}</td>
@@ -98,11 +138,30 @@ export default function TradersPage() {
                         {rank.name}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{trader.tradesCount}</td>
+                    <td className="px-4 py-4">
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
+                        isBanned 
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      }`}>
+                        {isBanned ? 'Đã cấm' : 'Hoạt động'}
+                      </span>
+                    </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-end gap-1">
+                        <button 
+                          onClick={() => handleToggleBan(trader._id, trader.status)}
+                          className={`p-2 rounded-lg transition-colors ${
+                            isBanned 
+                              ? 'text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20' 
+                              : 'text-orange-500 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+                          }`}
+                          title={isBanned ? 'Bỏ cấm' : 'Cấm trader'}
+                        >
+                          {isBanned ? <CheckCircle size={16} /> : <Ban size={16} />}
+                        </button>
                         <Link 
-                          href={`/admin/traders/${trader.id}/edit`}
+                          href={`/admin/traders/${trader._id}/edit`}
                           className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                         >
                           <Pencil size={16} />
@@ -120,7 +179,9 @@ export default function TradersPage() {
         </div>
 
         <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Hiển thị 1-5 của 5 traders</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {filteredTraders ? `Hiển thị ${filteredTraders.length} traders` : 'Đang tải...'}
+          </p>
           <div className="flex items-center gap-2">
             <button className="px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50" disabled>
               Trước
