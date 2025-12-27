@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { RefreshCcw, Clock, ChevronRight, MessageCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { RefreshCcw, Clock, ChevronRight, MessageCircle, Plus } from 'lucide-react';
 
 type TabType = 'exchanging' | 'closed';
 
 const ExchangePage: React.FC = () => {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('exchanging');
 
   const closedExchanges = [
@@ -189,6 +191,13 @@ const ExchangePage: React.FC = () => {
            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Đang đồng bộ dữ liệu...</span>
         </div>
       </div>
+      
+      <button
+          onClick={() => router.push('/trade/new')}
+          className="fixed bottom-24 right-4 w-14 h-14 bg-teal-500 rounded-full flex items-center justify-center shadow-[0_4px_16px_rgba(20,184,166,0.4)] active:scale-90 transition-transform z-50"
+        >
+          <Plus className="w-6 h-6 text-white stroke-[3px]" />
+        </button>
       
       <style>{`
         @keyframes spin-slow {

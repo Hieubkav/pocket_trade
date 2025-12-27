@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Pencil, Copy, Hexagon, RefreshCcw, Plus, Star } from 'lucide-react';
 
 const ProfilePage: React.FC = () => {
+  const router = useRouter();
   const [subTab, setSubTab] = useState<'offering' | 'seeking'>('offering');
 
   return (
@@ -110,7 +112,10 @@ const ProfilePage: React.FC = () => {
                     <p className="text-[12px] font-bold text-slate-400 leading-tight">Bạn chưa có bài đăng nào. Hãy tạo bài để thu hút các nhà sưu tầm khác.</p>
                 </div>
 
-                <button className="group flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl text-sm font-black shadow-xl hover:bg-teal-600 transition-all active:scale-95">
+                <button 
+                  onClick={() => router.push('/trade/new')}
+                  className="group flex items-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl text-sm font-black shadow-xl hover:bg-teal-600 transition-all active:scale-95"
+                >
                     <div className="bg-teal-500 rounded-lg p-1 group-hover:bg-white transition-colors">
                         <Plus className="w-4 h-4 stroke-[4px] group-hover:text-teal-600" />
                     </div>
