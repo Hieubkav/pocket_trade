@@ -1,19 +1,19 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { LayoutGrid, MessageSquare, User, ArrowLeftRight } from 'lucide-react';
 
 interface HeaderProps {
   currentView: 'library' | 'trade' | 'chat' | 'profile';
-  onViewChange: (view: 'library' | 'trade' | 'chat' | 'profile') => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => {
+const Header: React.FC<HeaderProps> = ({ currentView }) => {
   const navItems = [
-    { id: 'library', label: 'THƯ VIỆN', icon: LayoutGrid },
-    { id: 'trade', label: 'GIAO DỊCH', icon: ArrowLeftRight },
-    { id: 'chat', label: 'TRÒ CHUYỆN', icon: MessageSquare },
-    { id: 'profile', label: 'CÁ NHÂN', icon: User },
+    { id: 'library', label: 'THƯ VIỆN', icon: LayoutGrid, href: '/' },
+    { id: 'trade', label: 'GIAO DỊCH', icon: ArrowLeftRight, href: '/trade' },
+    { id: 'chat', label: 'TRÒ CHUYỆN', icon: MessageSquare, href: '/chat' },
+    { id: 'profile', label: 'CÁ NHÂN', icon: User, href: '/profile' },
   ] as const;
 
   return (
@@ -22,9 +22,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => {
         <div className="flex justify-center items-center h-16">
           <nav className="flex items-center gap-4 h-full">
             {navItems.map((item) => (
-              <button
+              <Link
                 key={item.id}
-                onClick={() => onViewChange(item.id)}
+                href={item.href}
                 className={`
                   relative flex items-center gap-2 px-4 h-full transition-all duration-200 group
                   text-[11px] font-bold tracking-[0.12em]
@@ -42,7 +42,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => {
                 {currentView === item.id && (
                   <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white rounded-t-sm shadow-[0_-2px_6px_rgba(255,255,255,0.3)]" />
                 )}
-              </button>
+              </Link>
             ))}
           </nav>
         </div>

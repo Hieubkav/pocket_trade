@@ -1,28 +1,28 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { LayoutGrid, MessageSquare, User, ArrowLeftRight } from 'lucide-react';
 
 interface BottomNavProps {
   currentView: 'library' | 'trade' | 'chat' | 'profile';
-  onViewChange: (view: 'library' | 'trade' | 'chat' | 'profile') => void;
 }
 
-const BottomNav: React.FC<BottomNavProps> = ({ currentView, onViewChange }) => {
+const BottomNav: React.FC<BottomNavProps> = ({ currentView }) => {
   const tabs = [
-    { id: 'library', icon: LayoutGrid },
-    { id: 'trade', icon: ArrowLeftRight },
-    { id: 'chat', icon: MessageSquare },
-    { id: 'profile', icon: User },
+    { id: 'library', icon: LayoutGrid, href: '/' },
+    { id: 'trade', icon: ArrowLeftRight, href: '/trade' },
+    { id: 'chat', icon: MessageSquare, href: '/chat' },
+    { id: 'profile', icon: User, href: '/profile' },
   ] as const;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-teal-600 md:hidden">
       <div className="flex items-center justify-around h-16">
         {tabs.map((tab) => (
-          <button 
+          <Link 
             key={tab.id}
-            onClick={() => onViewChange(tab.id)}
+            href={tab.href}
             className={`
                 relative flex flex-col items-center justify-center w-full h-full transition-all duration-300
                 ${currentView === tab.id ? 'text-white' : 'text-teal-200 hover:text-white'}
@@ -38,7 +38,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ currentView, onViewChange }) => {
             `}>
               <tab.icon className={`w-6 h-6 ${currentView === tab.id ? 'stroke-[2.5px]' : 'stroke-[2px]'}`} />
             </div>
-          </button>
+          </Link>
         ))}
       </div>
     </div>
