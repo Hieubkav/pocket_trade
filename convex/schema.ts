@@ -2,10 +2,22 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // 1. Card
+  // 1. Rarity (Độ hiếm)
+  rarities: defineTable({
+    name: v.string(), // ◆, ◆◆, ◆◆◆, ◆◆◆◆, ★, ★★, ★★★, ♢, Shiny Rare, Shiny Super Rare
+    imageUrl: v.string(),
+  }),
+
+  // 2. Series
+  series: defineTable({
+    name: v.string(), // A Series, B Series...
+    imageUrl: v.optional(v.string()),
+  }),
+
+  // 3. Card
   cards: defineTable({
     name: v.string(),
-    rarity: v.string(), // ◆, ◆◆, ◆◆◆, ◆◆◆◆, ★, ★★, ★★★, ♢, Shiny Rare, Shiny Super Rare
+    rarityId: v.id("rarities"),
     supertype: v.string(), // pokemon, trainer
     subtype: v.string(), // Basic, Stage 1, Stage 2, ex, Item, Supporter, Tool
     type: v.string(), // Grass, Fire, Water, Lightning, Psychic, Fighting, Darkness, Metal, Dragon, Colorless
@@ -14,32 +26,32 @@ export default defineSchema({
     imageUrl: v.string(),
   })
     .index("by_pack", ["packId"])
-    .index("by_rarity", ["rarity"])
+    .index("by_rarity", ["rarityId"])
     .index("by_type", ["type"]),
 
-  // 2. Pack
+  // 4. Pack
   packs: defineTable({
     name: v.string(),
     imageUrl: v.string(),
     setId: v.id("sets"),
   }).index("by_set", ["setId"]),
 
-  // 3. Set
+  // 5. Set
   sets: defineTable({
     name: v.string(),
     imageUrl: v.string(),
     setCode: v.string(),
-    series: v.string(), // A series, B series...
-  }).index("by_series", ["series"]),
+    seriesId: v.id("series"),
+  }).index("by_series", ["seriesId"]),
 
-  // 4. Admin
+  // 6. Admin
   admins: defineTable({
     username: v.string(),
     email: v.string(),
     password: v.string(),
   }).index("by_email", ["email"]),
 
-  // 5. Trader
+  // 7. Trader
   traders: defineTable({
     name: v.string(),
     email: v.string(),
@@ -49,7 +61,7 @@ export default defineSchema({
     friendCode: v.optional(v.string()),
   }).index("by_email", ["email"]),
 
-  // 6. Trade-post
+  // 8. Trade-post
   tradePosts: defineTable({
     traderId: v.id("traders"),
     status: v.string(), // active, expired, cancelled, matched
@@ -60,7 +72,7 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_expires", ["expiresAt"]),
 
-  // 7. Trade-request
+  // 9. Trade-request
   tradeRequests: defineTable({
     tradePostId: v.id("tradePosts"),
     requesterId: v.id("traders"),
@@ -70,7 +82,7 @@ export default defineSchema({
     .index("by_trade_post", ["tradePostId"])
     .index("by_requester", ["requesterId"]),
 
-  // 8. Trade-post-Card (Pivot)
+  // 10. Trade-post-Card (Pivot)
   tradePostCards: defineTable({
     tradePostId: v.id("tradePosts"),
     cardId: v.id("cards"),
@@ -79,7 +91,7 @@ export default defineSchema({
     .index("by_trade_post", ["tradePostId"])
     .index("by_card", ["cardId"]),
 
-  // 9. Chat
+  // 11. Chat
   chats: defineTable({
     tradePostId: v.id("tradePosts"),
     traderHostId: v.id("traders"),
@@ -89,7 +101,7 @@ export default defineSchema({
     .index("by_host", ["traderHostId"])
     .index("by_guest", ["traderGuestId"]),
 
-  // 10. Message
+  // 12. Message
   messages: defineTable({
     chatId: v.id("chats"),
     senderId: v.id("traders"),
@@ -98,7 +110,7 @@ export default defineSchema({
     isRead: v.boolean(), // default false
   }).index("by_chat", ["chatId"]),
 
-  // 11. Trader-Card (Lịch sử trade)
+  // 13. Trader-Card (Lịch sử trade)
   traderCards: defineTable({
     traderId: v.id("traders"),
     cardId: v.id("cards"),
@@ -109,7 +121,7 @@ export default defineSchema({
     .index("by_trader", ["traderId"])
     .index("by_card", ["cardId"]),
 
-  // 12. Setting (chỉ 1 record)
+  // 14. Setting (chỉ 1 record)
   settings: defineTable({
     siteName: v.string(),
     logo: v.optional(v.string()),
@@ -123,7 +135,7 @@ export default defineSchema({
     tradePostDurationHours: v.number(), // default 48
   }),
 
-  // 13. Event
+  // 15. Event
   events: defineTable({
     name: v.string(),
     content: v.string(), // HTML
@@ -133,7 +145,7 @@ export default defineSchema({
     isActive: v.boolean(), // default false
   }).index("by_active", ["isActive"]),
 
-  // 14. Visitor
+  // 16. Visitor
   visitors: defineTable({
     ipAddress: v.string(),
     userAgent: v.string(),

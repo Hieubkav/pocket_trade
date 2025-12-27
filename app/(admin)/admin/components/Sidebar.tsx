@@ -15,6 +15,8 @@ import {
   ArrowLeftRight,
   Calendar,
   ShieldCheck,
+  Sparkles,
+  Library,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -38,8 +40,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   const menuItems = [
     { id: 'dashboard', icon: LayoutDashboard, label: 'Tổng Quan', href: '/admin' },
     { id: 'cards', icon: CreditCard, label: 'Thẻ Bài', href: '/admin/cards' },
+    { id: 'rarities', icon: Sparkles, label: 'Độ Hiếm', href: '/admin/rarities' },
     { id: 'packs', icon: Package, label: 'Packs', href: '/admin/packs' },
     { id: 'sets', icon: Layers, label: 'Sets', href: '/admin/sets' },
+    { id: 'series', icon: Library, label: 'Series', href: '/admin/series' },
     { id: 'traders', icon: Users, label: 'Traders', href: '/admin/traders' },
     { id: 'trade-posts', icon: ArrowLeftRight, label: 'Trade Posts', href: '/admin/trade-posts' },
     { id: 'events', icon: Calendar, label: 'Sự Kiện', href: '/admin/events' },
