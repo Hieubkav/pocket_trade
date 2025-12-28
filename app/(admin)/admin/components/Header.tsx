@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, Home, Menu, Sun, Moon, ChevronRight, User, LogOut, Settings } from 'lucide-react';
+import { useAdminSession } from '../hooks/useAdminSession';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -11,6 +12,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ toggleSidebar, isDarkMode, toggleTheme, breadcrumbs }) => {
+  const { admin, logout } = useAdminSession();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -85,17 +87,24 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, isDarkMode, toggleTheme,
             onClick={() => setShowProfileMenu(!showProfileMenu)}
             className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 overflow-hidden border border-slate-200 dark:border-slate-700 cursor-pointer flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
-            <span className="font-bold text-xs text-indigo-700 dark:text-indigo-300">AD</span>
+            <span className="font-bold text-xs text-indigo-700 dark:text-indigo-300">
+              {admin?.username?.slice(0, 2).toUpperCase() || 'AD'}
+            </span>
           </button>
 
           {showProfileMenu && (
             <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-xl py-1 border border-slate-200 dark:border-slate-700 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
                   <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                    Admin User
+                    {admin?.username || 'Admin'}
+                    {admin?.isSuperAdmin && (
+                      <span className="ml-2 text-xs bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded">
+                        Super
+                      </span>
+                    )}
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                    admin@pockettrade.com
+                    {admin?.email || ''}
                   </p>
                </div>
                
@@ -111,7 +120,10 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, isDarkMode, toggleTheme,
                </div>
                
                <div className="border-t border-slate-100 dark:border-slate-700 py-1">
-                 <button className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2">
+                 <button 
+                   onClick={logout}
+                   className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
+                 >
                     <LogOut size={16} /> 
                     <span>Đăng xuất</span>
                  </button>

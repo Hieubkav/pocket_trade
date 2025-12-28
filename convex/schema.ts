@@ -48,6 +48,8 @@ export default defineSchema({
     username: v.string(),
     email: v.string(),
     password: v.string(),
+    isSuperAdmin: v.boolean(),
+    createdAt: v.number(),
   }).index("by_email", ["email"]),
 
   // 7. Trader
