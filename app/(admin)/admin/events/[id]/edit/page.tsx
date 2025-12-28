@@ -1,10 +1,96 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import { toast } from 'sonner';
+import ImageUpload from '@/app/components/ImageUpload';
+
+const LexicalEditor = dynamic(() => import('@/app/components/LexicalEditor'), { ssr: false });
+
+function formatDateForInput(timestamp: number) {
+  return new Date(timestamp).toISOString().split('T')[0];
+}
 
 export default function EditEventPage() {
+  const params = useParams();
+  const router = useRouter();
+  const id = params.id as Id<"events">;
+  const event = useQuery(api.events.getById, { id });
+  const updateEvent = useMutation(api.events.update);
+  const markFileUsed = useMutation(api.files.markFileUsed);
+  const releaseFile = useMutation(api.files.releaseFile);
+  
+  const [name, setName] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [content, setContent] = useState('');
+  const [isActive, setIsActive] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const originalImageUrl = useRef<string>('');
+
+  useEffect(() => {
+    if (event) {
+      setName(event.name);
+      setStartDate(formatDateForInput(event.startDate));
+      setEndDate(formatDateForInput(event.endDate));
+      setImageUrl(event.imageUrl || '');
+      setContent(event.content);
+      setIsActive(event.isActive);
+      originalImageUrl.current = event.imageUrl || '';
+    }
+  }, [event]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !startDate || !endDate || !content) {
+      toast.error('Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await updateEvent({
+        id,
+        name,
+        content,
+        imageUrl: imageUrl || undefined,
+        startDate: new Date(startDate).getTime(),
+        endDate: new Date(endDate).getTime(),
+        isActive,
+      });
+      
+      // Handle file tracking when image changes
+      const usedByKey = `events:${id}`;
+      if (imageUrl !== originalImageUrl.current) {
+        // Release old file
+        if (originalImageUrl.current && originalImageUrl.current.includes('convex.cloud')) {
+          await releaseFile({ usedBy: usedByKey });
+        }
+        // Mark new file as used
+        if (imageUrl && imageUrl.includes('convex.cloud')) {
+          await markFileUsed({ url: imageUrl, usedBy: usedByKey });
+        }
+      }
+      
+      toast.success('Cập nhật sự kiện thành công');
+      router.push('/admin/events');
+    } catch {
+      toast.error('Có lỗi xảy ra');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!event) {
+    return <div className="text-center py-8 text-slate-500">Đang tải...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -21,7 +107,7 @@ export default function EditEventPage() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-        <form className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
@@ -29,7 +115,8 @@ export default function EditEventPage() {
               </label>
               <input
                 type="text"
-                defaultValue="Tết Nguyên Đán 2025"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
               />
             </div>
@@ -40,7 +127,8 @@ export default function EditEventPage() {
               </label>
               <input
                 type="date"
-                defaultValue="2025-01-25"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
                 className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
               />
             </div>
@@ -51,30 +139,27 @@ export default function EditEventPage() {
               </label>
               <input
                 type="date"
-                defaultValue="2025-02-10"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
                 className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
               />
             </div>
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                URL Hình ảnh
+                Hình ảnh
               </label>
-              <input
-                type="text"
-                defaultValue="/images/event-tet.png"
-                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
-              />
+              <ImageUpload value={imageUrl} onChange={setImageUrl} />
             </div>
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Nội dung (HTML)
+                Nội dung
               </label>
-              <textarea
-                rows={6}
-                defaultValue="<p>Chào mừng Tết Nguyên Đán 2025! Trade thẻ và nhận quà.</p>"
-                className="w-full px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200 resize-none"
+              <LexicalEditor
+                value={content}
+                onChange={setContent}
+                placeholder="Nhập nội dung sự kiện..."
               />
             </div>
 
@@ -82,7 +167,8 @@ export default function EditEventPage() {
               <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  defaultChecked
+                  checked={isActive}
+                  onChange={(e) => setIsActive(e.target.checked)}
                   className="w-5 h-5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
                 />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -101,9 +187,10 @@ export default function EditEventPage() {
             </Link>
             <button
               type="submit"
-              className="px-4 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 rounded-lg transition-colors"
+              disabled={isSubmitting}
+              className="px-4 py-2 text-sm font-medium text-white bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 rounded-lg transition-colors disabled:opacity-50"
             >
-              Lưu thay đổi
+              {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
             </button>
           </div>
         </form>
