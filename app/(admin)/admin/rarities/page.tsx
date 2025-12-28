@@ -11,10 +11,12 @@ import { toast } from 'sonner';
 export default function RaritiesPage() {
   const rarities = useQuery(api.rarities.list);
   const removeRarity = useMutation(api.rarities.remove);
+  const bulkRemoveRarities = useMutation(api.rarities.bulkRemove);
   const seedRarities = useMutation(api.rarities.seed);
   const [search, setSearch] = useState('');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [isSeeding, setIsSeeding] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<Id<"rarities">>>(new Set());
 
   const filteredAndSorted = useMemo(() => {
     if (!rarities) return [];
@@ -34,6 +36,30 @@ export default function RaritiesPage() {
   const handleDelete = async (id: Id<"rarities">) => {
     if (confirm('Bạn có chắc muốn xóa độ hiếm này?')) {
       await removeRarity({ id });
+    }
+  };
+
+  const toggleSelect = (id: Id<"rarities">) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) newSelected.delete(id);
+    else newSelected.add(id);
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredAndSorted.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredAndSorted.map(r => r._id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (confirm(`Xóa ${selectedIds.size} độ hiếm đã chọn?`)) {
+      await bulkRemoveRarities({ ids: Array.from(selectedIds) });
+      toast.success(`Đã xóa ${selectedIds.size} độ hiếm`);
+      setSelectedIds(new Set());
     }
   };
 
@@ -79,7 +105,7 @@ export default function RaritiesPage() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -90,12 +116,29 @@ export default function RaritiesPage() {
               className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
             />
           </div>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+            >
+              <Trash2 size={16} />
+              <span>Xóa {selectedIds.size} mục</span>
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50">
+                <th className="px-4 py-3 w-12">
+                  <input
+                    type="checkbox"
+                    checked={filteredAndSorted.length > 0 && selectedIds.size === filteredAndSorted.length}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hình ảnh</th>
                 <th 
                   onClick={() => setSortDir(sortDir === 'asc' ? 'desc' : 'asc')}
@@ -112,16 +155,24 @@ export default function RaritiesPage() {
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {!rarities ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
               ) : filteredAndSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
                     {search ? 'Không tìm thấy độ hiếm nào' : 'Chưa có độ hiếm nào'}
                   </td>
                 </tr>
               ) : filteredAndSorted.map((rarity) => (
                 <tr key={rarity._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <td className="px-4 py-4 w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(rarity._id)}
+                      onChange={() => toggleSelect(rarity._id)}
+                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                  </td>
                   <td className="px-4 py-4">
                     {rarity.imageUrl ? (
                       <img src={rarity.imageUrl} alt={rarity.name} className="h-10 w-10 rounded object-cover" />

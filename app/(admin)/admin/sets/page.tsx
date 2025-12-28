@@ -16,6 +16,7 @@ export default function SetsPage() {
   const sets = useQuery(api.sets.list);
   const seriesList = useQuery(api.series.list);
   const removeSet = useMutation(api.sets.remove);
+  const bulkRemoveSets = useMutation(api.sets.bulkRemove);
   const seedAll = useMutation(api.seed.seedAll);
   const [search, setSearch] = useState('');
   const [filterSeries, setFilterSeries] = useState('');
@@ -24,6 +25,7 @@ export default function SetsPage() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize>(10);
+  const [selectedIds, setSelectedIds] = useState<Set<Id<"sets">>>(new Set());
 
   const filteredAndSorted = useMemo(() => {
     if (!sets) return [];
@@ -77,6 +79,30 @@ export default function SetsPage() {
   const handleDelete = async (id: Id<"sets">) => {
     if (confirm('Bạn có chắc muốn xóa set này?')) {
       await removeSet({ id });
+    }
+  };
+
+  const toggleSelect = (id: Id<"sets">) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) newSelected.delete(id);
+    else newSelected.add(id);
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedData.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedData.map(s => s._id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (confirm(`Xóa ${selectedIds.size} sets đã chọn?`)) {
+      await bulkRemoveSets({ ids: Array.from(selectedIds) });
+      toast.success(`Đã xóa ${selectedIds.size} sets`);
+      setSelectedIds(new Set());
     }
   };
 
@@ -142,12 +168,29 @@ export default function SetsPage() {
               <option key={s._id} value={s._id}>{s.name}</option>
             ))}
           </select>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+            >
+              <Trash2 size={16} />
+              <span>Xóa {selectedIds.size} mục</span>
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50">
+                <th className="px-4 py-3 w-12">
+                  <input
+                    type="checkbox"
+                    checked={paginatedData.length > 0 && selectedIds.size === paginatedData.length}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                </th>
                 <th onClick={() => toggleSort('name')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
                   <span className="inline-flex items-center gap-1">Set <ArrowUpDown size={14} className={sortField === 'name' ? 'text-indigo-500' : ''} /></span>
                 </th>
@@ -167,16 +210,24 @@ export default function SetsPage() {
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {!sets ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
               ) : filteredAndSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                     {search || filterSeries ? 'Không tìm thấy set nào' : 'Chưa có set nào'}
                   </td>
                 </tr>
               ) : paginatedData.map((set) => (
                 <tr key={set._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <td className="px-4 py-4 w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(set._id)}
+                      onChange={() => toggleSelect(set._id)}
+                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                  </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
                       {set.imageUrl ? (

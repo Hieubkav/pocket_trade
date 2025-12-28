@@ -6,6 +6,7 @@ import { Plus, Search, Pencil, Trash2, ArrowUpDown, ChevronLeft, ChevronRight } 
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { toast } from 'sonner';
 
 type SortField = 'name' | 'setName' | 'cardCount';
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100, 'all'] as const;
@@ -15,12 +16,14 @@ export default function PacksPage() {
   const packs = useQuery(api.packs.list);
   const sets = useQuery(api.sets.list);
   const removePack = useMutation(api.packs.remove);
+  const bulkRemovePacks = useMutation(api.packs.bulkRemove);
   const [search, setSearch] = useState('');
   const [filterSet, setFilterSet] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize>(10);
+  const [selectedIds, setSelectedIds] = useState<Set<Id<"packs">>>(new Set());
 
   const filteredAndSorted = useMemo(() => {
     if (!packs) return [];
@@ -75,6 +78,30 @@ export default function PacksPage() {
     }
   };
 
+  const toggleSelect = (id: Id<"packs">) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) newSelected.delete(id);
+    else newSelected.add(id);
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedData.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedData.map(p => p._id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (confirm(`Xóa ${selectedIds.size} packs đã chọn?`)) {
+      await bulkRemovePacks({ ids: Array.from(selectedIds) });
+      toast.success(`Đã xóa ${selectedIds.size} packs`);
+      setSelectedIds(new Set());
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -113,12 +140,29 @@ export default function PacksPage() {
               <option key={s._id} value={s._id}>{s.name}</option>
             ))}
           </select>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+            >
+              <Trash2 size={16} />
+              <span>Xóa {selectedIds.size} mục</span>
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50">
+                <th className="px-4 py-3 w-12">
+                  <input
+                    type="checkbox"
+                    checked={paginatedData.length > 0 && selectedIds.size === paginatedData.length}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                </th>
                 <th onClick={() => toggleSort('name')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
                   <span className="inline-flex items-center gap-1">Pack <ArrowUpDown size={14} className={sortField === 'name' ? 'text-indigo-500' : ''} /></span>
                 </th>
@@ -134,16 +178,24 @@ export default function PacksPage() {
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {!packs ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
               ) : filteredAndSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                     {search || filterSet ? 'Không tìm thấy pack nào' : 'Chưa có pack nào'}
                   </td>
                 </tr>
               ) : paginatedData.map((pack) => (
                 <tr key={pack._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <td className="px-4 py-4 w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(pack._id)}
+                      onChange={() => toggleSelect(pack._id)}
+                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                  </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
                       {pack.imageUrl ? (

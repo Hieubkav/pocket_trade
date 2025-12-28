@@ -44,6 +44,16 @@ export const remove = mutation({
   },
 });
 
+export const bulkRemove = mutation({
+  args: { ids: v.array(v.id("rarities")) },
+  handler: async (ctx, args) => {
+    for (const id of args.ids) {
+      await ctx.db.delete(id);
+    }
+    return { deleted: args.ids.length };
+  },
+});
+
 // Pokemon TCG Pocket Rarities Data (images from pokemongohub.net)
 const RARITIES_DATA = [
   { name: "◆", imageUrl: "https://pokemongohub.net/wp-content/uploads/2024/12/show.png" },           // One Diamond - Common

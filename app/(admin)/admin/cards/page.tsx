@@ -8,6 +8,8 @@ import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 
+type CardId = Id<"cards">;
+
 const rarityColors: Record<string, string> = {
   '◆': 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
   '◆◆': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
@@ -27,6 +29,7 @@ type PageSize = typeof PAGE_SIZE_OPTIONS[number];
 export default function CardsPage() {
   const cards = useQuery(api.cards.list);
   const removeCard = useMutation(api.cards.remove);
+  const bulkRemoveCards = useMutation(api.cards.bulkRemove);
   const seedAllCards = useAction(api.seedCards.seedAllCards);
   const [search, setSearch] = useState('');
   const [filterSupertype, setFilterSupertype] = useState('');
@@ -36,6 +39,7 @@ export default function CardsPage() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize>(20);
+  const [selectedIds, setSelectedIds] = useState<Set<CardId>>(new Set());
 
   const filteredAndSorted = useMemo(() => {
     if (!cards) return [];
@@ -69,9 +73,33 @@ export default function CardsPage() {
     else { setSortField(field); setSortDir('asc'); }
   };
 
-  const handleDelete = async (id: Id<"cards">) => {
+  const handleDelete = async (id: CardId) => {
     if (confirm('Bạn có chắc muốn xóa thẻ này?')) {
       await removeCard({ id });
+    }
+  };
+
+  const toggleSelect = (id: CardId) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) newSelected.delete(id);
+    else newSelected.add(id);
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginatedData.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginatedData.map(c => c._id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (confirm(`Xóa ${selectedIds.size} thẻ đã chọn?`)) {
+      await bulkRemoveCards({ ids: Array.from(selectedIds) });
+      toast.success(`Đã xóa ${selectedIds.size} thẻ`);
+      setSelectedIds(new Set());
     }
   };
 
@@ -153,12 +181,29 @@ export default function CardsPage() {
             <option value="">Tất cả type</option>
             {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+            >
+              <Trash2 size={16} />
+              <span>Xóa {selectedIds.size} mục</span>
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50">
+                <th className="px-4 py-3 w-12">
+                  <input
+                    type="checkbox"
+                    checked={paginatedData.length > 0 && selectedIds.size === paginatedData.length}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                </th>
                 <th onClick={() => toggleSort('name')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
                   <span className="inline-flex items-center gap-1">Thẻ <ArrowUpDown size={14} className={sortField === 'name' ? 'text-indigo-500' : ''} /></span>
                 </th>
@@ -178,16 +223,24 @@ export default function CardsPage() {
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {!cards ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
               ) : filteredAndSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                     {search || filterSupertype || filterType ? 'Không tìm thấy thẻ nào' : 'Chưa có thẻ nào'}
                   </td>
                 </tr>
               ) : paginatedData.map((card) => (
                 <tr key={card._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <td className="px-4 py-4 w-12">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(card._id)}
+                      onChange={() => toggleSelect(card._id)}
+                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                  </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
                       {card.imageUrl ? (

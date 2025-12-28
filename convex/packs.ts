@@ -58,3 +58,13 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+export const bulkRemove = mutation({
+  args: { ids: v.array(v.id("packs")) },
+  handler: async (ctx, args) => {
+    for (const id of args.ids) {
+      await ctx.db.delete(id);
+    }
+    return { deleted: args.ids.length };
+  },
+});
