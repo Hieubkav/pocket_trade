@@ -12,6 +12,7 @@ import type * as cards from "../cards.js";
 import type * as events from "../events.js";
 import type * as files from "../files.js";
 import type * as packs from "../packs.js";
+import type * as posts from "../posts.js";
 import type * as rarities from "../rarities.js";
 import type * as seed from "../seed.js";
 import type * as seedCards from "../seedCards.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   files: typeof files;
   packs: typeof packs;
+  posts: typeof posts;
   rarities: typeof rarities;
   seed: typeof seed;
   seedCards: typeof seedCards;

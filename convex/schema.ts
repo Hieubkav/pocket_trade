@@ -160,7 +160,19 @@ export default defineSchema({
     visitedAt: v.number(), // timestamp
   }).index("by_visited_at", ["visitedAt"]),
 
-  // 17. Files (track uploaded files for cleanup)
+  // 17. Post (Bài viết)
+  posts: defineTable({
+    title: v.string(),
+    slug: v.string(),
+    content: v.string(), // HTML from Lexical
+    imageUrl: v.optional(v.string()),
+    isPublished: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_published", ["isPublished"]),
+
+  // 18. Files (track uploaded files for cleanup)
   files: defineTable({
     storageId: v.id("_storage"),
     url: v.string(),

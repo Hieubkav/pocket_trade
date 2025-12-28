@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Sparkles,
   Library,
+  FileText,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -47,6 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'traders', icon: Users, label: 'Traders', href: '/admin/traders' },
     { id: 'trade-posts', icon: ArrowLeftRight, label: 'Trade Posts', href: '/admin/trade-posts' },
     { id: 'events', icon: Calendar, label: 'Sự Kiện', href: '/admin/events' },
+    { id: 'posts', icon: FileText, label: 'Bài Viết', href: '/admin/posts' },
     { id: 'admins', icon: ShieldCheck, label: 'Admins', href: '/admin/admins' },
     { id: 'settings', icon: Settings, label: 'Cài Đặt', href: '/admin/settings' },
   ];
