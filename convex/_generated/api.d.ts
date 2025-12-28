@@ -17,6 +17,7 @@ import type * as seed from "../seed.js";
 import type * as seedCards from "../seedCards.js";
 import type * as series from "../series.js";
 import type * as sets from "../sets.js";
+import type * as settings from "../settings.js";
 import type * as tradePosts from "../tradePosts.js";
 import type * as traders from "../traders.js";
 import type * as visitors from "../visitors.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   seedCards: typeof seedCards;
   series: typeof series;
   sets: typeof sets;
+  settings: typeof settings;
   tradePosts: typeof tradePosts;
   traders: typeof traders;
   visitors: typeof visitors;

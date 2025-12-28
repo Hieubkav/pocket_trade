@@ -130,6 +130,7 @@ export default defineSchema({
     favicon: v.optional(v.string()),
     seoTitle: v.optional(v.string()),
     seoDescription: v.optional(v.string()),
+    seoKeywords: v.optional(v.array(v.string())), // ["Pocket Trade", "Pokemon TCG", ...]
     contactEmail: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     limitTradePostPerTrader: v.number(), // default 5
