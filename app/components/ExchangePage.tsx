@@ -4,14 +4,24 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Plus, Clock, ArrowRightLeft, Loader2, Filter, ChevronDown, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { Plus, Clock, ArrowRightLeft, Loader2, Filter, ChevronDown, ChevronLeft, ChevronRight, Search, X, MessageCircle, Check, XCircle } from 'lucide-react';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
 
-type TabType = 'public-offers' | 'my-offers' | 'history';
+type TabType = 'public-offers' | 'my-offers' | 'my-requests' | 'history';
+
+// Tính rank từ tradePoint
+const getRank = (tradePoint: number) => {
+  if (tradePoint > 1000) return { name: 'Kim Cương', color: 'text-cyan-500', bg: 'bg-cyan-50', icon: '💎' };
+  if (tradePoint > 500) return { name: 'Vàng', color: 'text-yellow-500', bg: 'bg-yellow-50', icon: '🥇' };
+  if (tradePoint > 200) return { name: 'Bạc', color: 'text-slate-400', bg: 'bg-slate-100', icon: '🥈' };
+  if (tradePoint >= 100) return { name: 'Đồng', color: 'text-orange-500', bg: 'bg-orange-50', icon: '🥉' };
+  return { name: 'Sắt', color: 'text-slate-500', bg: 'bg-slate-100', icon: '⚔️' };
+};
 
 const tabs = [
   { id: 'public-offers' as TabType, label: 'Công khai' },
   { id: 'my-offers' as TabType, label: 'Của tôi' },
+  { id: 'my-requests' as TabType, label: 'Đã gửi' },
   { id: 'history' as TabType, label: 'Lịch sử' },
 ];
 
@@ -119,9 +129,21 @@ const ExchangePage: React.FC = () => {
     api.tradePosts.countTodayPosts,
     trader ? { traderId: trader._id } : 'skip'
   );
+  const todayRequestsCount = useQuery(
+    api.tradeRequests.countTodayRequests,
+    trader ? { traderId: trader._id } : 'skip'
+  );
 
   const maxPostsPerDay = settings?.limitTradePostPerTrader ?? 5;
   const remainingPosts = maxPostsPerDay - (todayPostsCount ?? 0);
+  const maxRequestsPerDay = settings?.limitRequestPerTraderPerDay ?? 20;
+  const remainingRequests = maxRequestsPerDay - (todayRequestsCount ?? 0);
+
+  // Outgoing requests (requests mình gửi đi)
+  const outgoingRequests = useQuery(
+    api.tradeRequests.listOutgoingByTrader,
+    trader && activeTab === 'my-requests' ? { traderId: trader._id } : 'skip'
+  );
 
   const rawPosts = tradePostsResult?.items ?? [];
   // Filter out expired posts on client-side for realtime update
@@ -163,10 +185,19 @@ const ExchangePage: React.FC = () => {
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <h1 className="text-lg font-black text-slate-900">Giao dịch</h1>
         {trader && (
-          <div className="flex items-center gap-1.5 bg-slate-100 rounded-full px-2.5 py-1">
-            <span className={`text-sm font-bold ${remainingPosts > 0 ? 'text-teal-600' : 'text-red-500'}`}>
-              {remainingPosts}/{maxPostsPerDay}
-            </span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1" title="Bài đăng còn lại">
+              <span className="text-[10px] text-slate-500">Đăng</span>
+              <span className={`text-xs font-bold ${remainingPosts > 0 ? 'text-teal-600' : 'text-red-500'}`}>
+                {remainingPosts}/{maxPostsPerDay}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1" title="Request còn lại">
+              <span className="text-[10px] text-slate-500">Req</span>
+              <span className={`text-xs font-bold ${remainingRequests > 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                {remainingRequests}/{maxRequestsPerDay}
+              </span>
+            </div>
           </div>
         )}
       </div>
@@ -300,7 +331,73 @@ const ExchangePage: React.FC = () => {
         </div>
       )}
 
+      {/* My Requests Tab - Outgoing Requests */}
+      {activeTab === 'my-requests' && (
+        <div className="px-3 py-3 space-y-2">
+          {outgoingRequests === undefined ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+            </div>
+          ) : outgoingRequests.length === 0 ? (
+            <div className="text-center py-12 text-slate-400">
+              <p className="text-sm">Bạn chưa gửi request nào</p>
+            </div>
+          ) : (
+            outgoingRequests.map((req) => (
+              <div
+                key={req._id}
+                onClick={() => router.push(`/trade/${req.tradePostId}`)}
+                className="bg-white rounded-xl p-3 active:bg-slate-50 transition-colors cursor-pointer border border-slate-100"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    {req.postOwnerAvatar ? (
+                      <img src={req.postOwnerAvatar} alt="" className="w-8 h-8 rounded-full border border-slate-200 object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">
+                        {req.postOwnerName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <span className="text-sm font-bold text-slate-900">{req.postOwnerName}</span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    req.status === 'accepted' ? 'bg-green-100 text-green-600' :
+                    req.status === 'declined' ? 'bg-red-100 text-red-600' :
+                    'bg-yellow-100 text-yellow-600'
+                  }`}>
+                    {req.status === 'accepted' && <><Check className="w-3 h-3 inline mr-0.5" /> Đã chấp nhận</>}
+                    {req.status === 'declined' && <><XCircle className="w-3 h-3 inline mr-0.5" /> Đã từ chối</>}
+                    {req.status === 'pending' && 'Đang chờ'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {req.offeredCard && (
+                    <div className="flex items-center gap-2">
+                      <img src={req.offeredCard.imageUrl} alt="" className="w-10 h-14 object-cover rounded border border-orange-200" />
+                      <span className="text-[10px] text-orange-600 font-bold">BẠN GỬI</span>
+                    </div>
+                  )}
+                  <ArrowRightLeft className="w-4 h-4 text-slate-300" />
+                  {req.requestedCard && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-teal-600 font-bold">BẠN NHẬN</span>
+                      <img src={req.requestedCard.imageUrl} alt="" className="w-10 h-14 object-cover rounded border border-teal-200" />
+                    </div>
+                  )}
+                </div>
+
+                {req.message && (
+                  <p className="mt-2 text-xs text-slate-400 truncate">&ldquo;{req.message}&rdquo;</p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
       {/* Trade List */}
+      {activeTab !== 'my-requests' && (
       <div className="px-3 py-3 space-y-2">
         {tradePostsResult === undefined ? (
           <div className="flex justify-center py-12">
@@ -329,7 +426,7 @@ const ExchangePage: React.FC = () => {
               onClick={() => router.push(`/trade/${post._id}`)}
               className="bg-white rounded-xl p-3 active:bg-slate-50 transition-colors cursor-pointer border border-slate-100"
             >
-              {/* Header: Avatar + Name + Time */}
+              {/* Header: Avatar + Name + Rank + Time */}
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   {/* Avatar with online badge */}
@@ -350,20 +447,41 @@ const ExchangePage: React.FC = () => {
                       post.traderIsOnline ? 'bg-green-500' : 'bg-slate-300'
                     }`} />
                   </div>
-                  <span className="text-sm font-bold text-slate-900">{post.traderName}</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-slate-900">{post.traderName}</span>
+                    {/* Trade Point & Rank */}
+                    {(() => {
+                      const rank = getRank(post.traderTradePoint ?? 0);
+                      return (
+                        <div className="flex items-center gap-1">
+                          <span className={`text-[9px] font-bold ${rank.color}`}>{rank.icon} {rank.name}</span>
+                          <span className="text-[9px] text-slate-400">({post.traderTradePoint ?? 0})</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 text-slate-400">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span className="text-xs font-medium">
-                    {activeTab === 'history' ? (
-                      'Đã hoàn thành'
-                    ) : (
-                      <CountdownTimer 
-                        expiresAt={post.expiresAt} 
-                        onExpired={() => handlePostExpired(post._id)}
-                      />
-                    )}
-                  </span>
+                <div className="flex items-center gap-2">
+                  {/* Request count badge - only for my-offers tab */}
+                  {activeTab === 'my-offers' && post.requestsCount > 0 && (
+                    <div className="flex items-center gap-1 bg-pink-50 text-pink-600 px-2 py-0.5 rounded-full">
+                      <MessageCircle className="w-3 h-3" />
+                      <span className="text-[10px] font-bold">{post.requestsCount}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1 text-slate-400">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span className="text-xs font-medium">
+                      {activeTab === 'history' ? (
+                        'Đã hoàn thành'
+                      ) : (
+                        <CountdownTimer 
+                          expiresAt={post.expiresAt} 
+                          onExpired={() => handlePostExpired(post._id)}
+                        />
+                      )}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -416,9 +534,10 @@ const ExchangePage: React.FC = () => {
           ))
         )}
       </div>
+      )}
 
       {/* Stats & Pagination */}
-      {posts.length > 0 && (
+      {activeTab !== 'my-requests' && posts.length > 0 && (
         <div className="px-4 space-y-3">
           <p className="text-xs text-slate-400 font-medium">
             Tổng: {total} bài đăng

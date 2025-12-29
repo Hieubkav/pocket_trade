@@ -83,6 +83,7 @@ export const listPaginated = query({
     const rarities = await ctx.db.query("rarities").collect();
     const packs = await ctx.db.query("packs").collect();
     const sets = await ctx.db.query("sets").collect();
+    const tradeRequests = await ctx.db.query("tradeRequests").collect();
 
     // Enrich cards with rarity and set info
     const enrichedCards = cards.map(card => {
@@ -108,11 +109,18 @@ export const listPaginated = query({
         .map(id => enrichedCards.find(c => c._id === id))
         .filter(Boolean);
       
+      // Count pending requests for this post
+      const pendingRequests = tradeRequests.filter(
+        r => r.tradePostId === post._id && r.status === "pending"
+      ).length;
+
       return {
         ...post,
         traderName: trader?.name || "",
         traderAvatar: trader?.avatarUrl || "",
         traderIsOnline: trader?.isOnline || false,
+        traderTradePoint: trader?.tradePoint ?? 0,
+        requestsCount: pendingRequests,
         haveCardsCount: haveCardIds.length,
         wantCardsCount: wantCardIds.length,
         haveCards: haveCardsData.map(c => ({ _id: c!._id, name: c!.name, imageUrl: c!.imageUrl, rarityName: c!.rarityName, setName: c!.setName })),
@@ -259,11 +267,38 @@ export const create = mutation({
     haveCardIds: v.array(v.id("cards")),
     wantCardIds: v.array(v.id("cards")),
     durationHours: v.optional(v.number()),
+    note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Get settings for default duration
     const settings = await ctx.db.query("settings").first();
     const durationHours = args.durationHours ?? settings?.tradePostDurationHours ?? 48;
+    
+    // Get all cards to validate rarity
+    const allCardIds = [...args.haveCardIds, ...args.wantCardIds];
+    const cards = await Promise.all(allCardIds.map(id => ctx.db.get(id)));
+    const rarities = await ctx.db.query("rarities").collect();
+    
+    // Get rarity names for all cards
+    const cardRarities = cards.map(card => {
+      if (!card) return null;
+      const rarity = rarities.find(r => r._id === card.rarityId);
+      return rarity?.name;
+    });
+    
+    // Check for Crown rarity - not allowed to trade
+    const hasCrown = cardRarities.some(r => r?.toLowerCase().includes("crown"));
+    if (hasCrown) {
+      throw new Error("Không thể giao dịch thẻ có độ hiếm Crown");
+    }
+    
+    // Check all cards have the same rarity
+    const uniqueRarities = [...new Set(cardRarities.filter(Boolean))];
+    if (uniqueRarities.length > 1) {
+      throw new Error("Tất cả thẻ trong giao dịch phải cùng độ hiếm");
+    }
+    
+    const tradeRarity = uniqueRarities[0] || "";
     
     // Check daily limit
     const now = new Date();
@@ -282,6 +317,9 @@ export const create = mutation({
       throw new Error(`Bạn đã đạt giới hạn ${maxPosts} bài đăng/ngày`);
     }
     
+    // Validate note length
+    const note = args.note?.slice(0, 50);
+    
     // Create trade post
     const expiresAt = Date.now() + durationHours * 60 * 60 * 1000;
     const postId = await ctx.db.insert("tradePosts", {
@@ -289,6 +327,8 @@ export const create = mutation({
       status: "active",
       expiresAt,
       isHidden: false,
+      note,
+      rarity: tradeRarity,
     });
     
     // Create tradePostCards for have cards

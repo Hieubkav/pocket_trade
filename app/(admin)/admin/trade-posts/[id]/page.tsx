@@ -15,6 +15,90 @@ const statusConfig: Record<string, { label: string; color: string }> = {
   cancelled: { label: 'Đã hủy', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
 };
 
+const requestStatusConfig: Record<string, { label: string; color: string }> = {
+  pending: { label: 'Đang chờ', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
+  accepted: { label: 'Đã chấp nhận', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+  declined: { label: 'Đã từ chối', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+};
+
+function RequestsSection({ postId, count }: { postId: Id<"tradePosts">; count: number }) {
+  const requests = useQuery(api.tradeRequests.listByPost, { tradePostId: postId });
+
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+      <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
+        Trade Requests ({count})
+      </h2>
+      {requests === undefined ? (
+        <div className="flex justify-center py-4">
+          <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+        </div>
+      ) : requests.length === 0 ? (
+        <p className="text-slate-400 text-sm">Chưa có request nào</p>
+      ) : (
+        <div className="space-y-4">
+          {requests.map((req) => {
+            const reqStatus = requestStatusConfig[req.status] || requestStatusConfig.pending;
+            return (
+              <div key={req._id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    {req.requesterAvatar ? (
+                      <img src={req.requesterAvatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-sm font-bold text-slate-500">
+                        {req.requesterName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-slate-900 dark:text-white text-sm">{req.requesterName}</p>
+                      <div className="flex items-center gap-1">
+                        <span className={`w-2 h-2 rounded-full ${req.requesterIsOnline ? 'bg-green-500' : 'bg-slate-300'}`} />
+                        <span className="text-xs text-slate-500">{req.requesterIsOnline ? 'Online' : 'Offline'}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${reqStatus.color}`}>
+                    {reqStatus.label}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-4 mb-3">
+                  {req.offeredCard && (
+                    <div className="flex items-center gap-2">
+                      <img src={req.offeredCard.imageUrl} alt={req.offeredCard.name} className="w-12 h-16 object-cover rounded border border-orange-300" />
+                      <div>
+                        <p className="text-[10px] text-orange-600 font-bold">OFFER</p>
+                        <p className="text-xs text-slate-700 dark:text-slate-300">{req.offeredCard.name}</p>
+                      </div>
+                    </div>
+                  )}
+                  <span className="text-slate-300">→</span>
+                  {req.requestedCard && (
+                    <div className="flex items-center gap-2">
+                      <img src={req.requestedCard.imageUrl} alt={req.requestedCard.name} className="w-12 h-16 object-cover rounded border border-teal-300" />
+                      <div>
+                        <p className="text-[10px] text-teal-600 font-bold">WANT</p>
+                        <p className="text-xs text-slate-700 dark:text-slate-300">{req.requestedCard.name}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {req.message && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 rounded p-2">
+                    "{req.message}"
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const formatDate = (timestamp: number) => {
   return new Date(timestamp).toLocaleString('vi-VN', {
     year: 'numeric',
@@ -125,16 +209,7 @@ export default function TradePostDetailPage() {
           </div>
 
           {/* Requests */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
-              Trade Requests ({tradePost.requestsCount})
-            </h2>
-            {tradePost.requestsCount === 0 ? (
-              <p className="text-slate-400 text-sm">Chưa có request nào</p>
-            ) : (
-              <p className="text-slate-500 text-sm">Xem chi tiết requests trong phần quản lý riêng</p>
-            )}
-          </div>
+          <RequestsSection postId={postId} count={tradePost.requestsCount} />
         </div>
 
         {/* Sidebar */}

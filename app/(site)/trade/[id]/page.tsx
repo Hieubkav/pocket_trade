@@ -83,7 +83,11 @@ export default function TradeDetailPage() {
   const handleUpdateRequest = async (requestId: Id<"tradeRequests">, status: string) => {
     if (!trader) return;
     try {
-      await updateRequestStatus({ id: requestId, status, traderId: trader._id });
+      const result = await updateRequestStatus({ id: requestId, status, traderId: trader._id });
+      // Nếu chấp nhận, chuyển ngay sang chat
+      if (status === 'accepted' && result?.chatId) {
+        router.push(`/chat/${result.chatId}`);
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Có lỗi xảy ra');
     }

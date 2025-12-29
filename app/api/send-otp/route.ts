@@ -4,8 +4,8 @@ import nodemailer from "nodemailer";
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "trquocviet.web@gmail.com",
-    pass: "nqdd rrik kxdf ncxn",
+    user: process.env.SMTP_EMAIL,
+    pass: process.env.SMTP_PASSWORD,
   },
 });
 
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     await transporter.sendMail({
-      from: '"Pocket Trade" <trquocviet.web@gmail.com>',
+      from: `"Pocket Trade" <${process.env.SMTP_EMAIL}>`,
       to: email,
       subject: "Mã OTP đặt lại mật khẩu - Pocket Trade",
       html: `

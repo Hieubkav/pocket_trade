@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Plus, X, Search, ArrowLeftRight, Loader2, Filter, ChevronDown, Check } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Plus, X, Search, ArrowLeftRight, Loader2, Filter, ChevronDown, Check, AlertCircle, MessageSquare } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
@@ -25,6 +25,15 @@ type CardData = {
 
 const ITEMS_PER_PAGE = 24;
 
+// Preset notes
+const PRESET_NOTES = [
+  'Chỉ trade card tiếng Anh',
+  'Chỉ trade card tiếng Trung',
+  'Chỉ trade card tiếng Nhật',
+  'Card mới, chưa dùng',
+  'Cần gấp, trade ngay',
+];
+
 const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) => {
   const { trader } = useTraderAuth();
   const [haveCards, setHaveCards] = useState<CardData[]>([]);
@@ -32,6 +41,8 @@ const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) 
   const [selectingFor, setSelectingFor] = useState<'have' | 'want' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState('');
+  const [showPresets, setShowPresets] = useState(false);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,6 +53,13 @@ const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) 
   const [sortDir, setSortDir] = useState<'ASC' | 'DESC'>('ASC');
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Calculate current rarity (from selected cards)
+  const currentRarity = useMemo(() => {
+    const allCards = [...haveCards, ...wantCards];
+    if (allCards.length === 0) return null;
+    return allCards[0].rarityName;
+  }, [haveCards, wantCards]);
 
   // Debounce search
   useEffect(() => {
@@ -76,18 +94,43 @@ const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) 
 
   const maxCardsPerPost = settings?.limitCardPerPost ?? 10;
   const collections = cardsResult?.collections ?? [];
-  const rarities = cardsResult?.rarities ?? [];
+  
+  // Filter out Crown rarity from available rarities
+  const rarities = useMemo(() => {
+    const allRarities = cardsResult?.rarities ?? [];
+    return allRarities.filter(r => !r.toLowerCase().includes('crown'));
+  }, [cardsResult?.rarities]);
+
   const totalPages = cardsResult?.totalPages ?? 1;
   const total = cardsResult?.total ?? 0;
-  const cards = (cardsResult?.items ?? []) as CardData[];
+  
+  // Filter cards - exclude Crown and only show same rarity if already selected
+  const cards = useMemo(() => {
+    const allCards = (cardsResult?.items ?? []) as CardData[];
+    return allCards.filter(card => {
+      // Exclude Crown rarity
+      if (card.rarityName.toLowerCase().includes('crown')) return false;
+      // If we have selected cards, only show same rarity
+      if (currentRarity && card.rarityName !== currentRarity) return false;
+      return true;
+    });
+  }, [cardsResult?.items, currentRarity]);
 
   const currentCards = selectingFor === 'have' ? haveCards : wantCards;
   const setCurrentCards = selectingFor === 'have' ? setHaveCards : setWantCards;
 
   const handleSelectCard = (card: CardData) => {
     if (currentCards.length >= maxCardsPerPost) return;
+    
+    // Check rarity match
+    if (currentRarity && card.rarityName !== currentRarity) {
+      setError(`Chỉ có thể chọn thẻ cùng độ hiếm (${currentRarity})`);
+      return;
+    }
+    
     if (!currentCards.find(c => c._id === card._id)) {
       setCurrentCards([...currentCards, card]);
+      setError(null);
     }
   };
 
@@ -106,6 +149,7 @@ const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) 
         traderId: trader._id,
         haveCardIds: haveCards.map(c => c._id),
         wantCardIds: wantCards.map(c => c._id),
+        note: note.trim() || undefined,
       });
       onSuccess?.();
       onBack();
@@ -184,6 +228,16 @@ const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) 
               </button>
             </div>
 
+            {/* Rarity Lock Notice */}
+            {currentRarity && (
+              <div className="mx-3 mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                <p className="text-xs text-amber-700">
+                  Chỉ hiển thị thẻ <span className="font-bold">{currentRarity}</span> (cùng độ hiếm với thẻ đã chọn)
+                </p>
+              </div>
+            )}
+
             {/* Search & Filter Bar */}
             <div className="px-3 py-2 border-b space-y-2 shrink-0">
               <div className="flex gap-2">
@@ -232,12 +286,15 @@ const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) 
                     <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   </div>
 
-                  {/* Rarity Filter */}
+                  {/* Rarity Filter - disabled if rarity already locked */}
                   <div className="relative">
                     <select
-                      value={selectedRarity}
-                      onChange={(e) => setSelectedRarity(e.target.value)}
-                      className="w-full appearance-none bg-slate-100 rounded-lg py-2 pl-3 pr-8 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      value={currentRarity || selectedRarity}
+                      onChange={(e) => !currentRarity && setSelectedRarity(e.target.value)}
+                      disabled={!!currentRarity}
+                      className={`w-full appearance-none rounded-lg py-2 pl-3 pr-8 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                        currentRarity ? 'bg-slate-200 text-slate-500' : 'bg-slate-100'
+                      }`}
                     >
                       <option value="All">Tất cả độ hiếm</option>
                       {rarities.map(r => (
@@ -279,7 +336,7 @@ const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) 
               {/* Results count */}
               {cardsResult && (
                 <p className="text-xs text-slate-400">
-                  {total > 0 ? `${total} kết quả` : 'Không có kết quả'}
+                  {cards.length > 0 ? `${cards.length} kết quả` : 'Không có kết quả'}
                 </p>
               )}
             </div>
@@ -315,7 +372,9 @@ const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) 
                 </div>
               ) : cards.length === 0 ? (
                 <div className="text-center py-8 text-slate-400 text-sm">
-                  Không tìm thấy thẻ
+                  {currentRarity 
+                    ? `Không tìm thấy thẻ độ hiếm ${currentRarity}`
+                    : 'Không tìm thấy thẻ'}
                 </div>
               ) : (
                 <>
@@ -415,8 +474,25 @@ const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) 
 
         <div className="flex-1 p-4 space-y-4">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-xl text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
               {error}
+            </div>
+          )}
+
+          {/* Rarity Info */}
+          {currentRarity && (
+            <div className="bg-teal-50 border border-teal-200 px-4 py-2 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-teal-600">Độ hiếm:</span>
+                <span className="text-sm font-bold text-teal-700">{currentRarity}</span>
+              </div>
+              <button
+                onClick={() => { setHaveCards([]); setWantCards([]); }}
+                className="text-xs text-teal-600 underline"
+              >
+                Đổi độ hiếm
+              </button>
             </div>
           )}
 
@@ -496,10 +572,63 @@ const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) 
               )}
             </div>
           </div>
+
+          {/* Note Section */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <MessageSquare className="w-4 h-4 text-slate-400" />
+              <h2 className="text-xs font-bold text-slate-500 uppercase">Ghi chú (tùy chọn)</h2>
+            </div>
+            
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value.slice(0, 50))}
+              placeholder="VD: Chỉ trade card tiếng Anh..."
+              className="w-full bg-slate-50 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 mb-2"
+            />
+            
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setShowPresets(!showPresets)}
+                className="text-xs text-teal-600 font-medium"
+              >
+                {showPresets ? 'Ẩn gợi ý' : 'Chọn nhanh'}
+              </button>
+              <span className="text-[10px] text-slate-400">{note.length}/50</span>
+            </div>
+
+            {showPresets && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {PRESET_NOTES.map((preset) => (
+                  <button
+                    key={preset}
+                    onClick={() => { setNote(preset); setShowPresets(false); }}
+                    className={`px-2.5 py-1 text-[11px] rounded-full border transition-colors ${
+                      note === preset 
+                        ? 'bg-teal-500 text-white border-teal-500' 
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Info box */}
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+            <p className="font-bold mb-1">📌 Lưu ý:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-[11px]">
+              <li>Không thể giao dịch thẻ độ hiếm Crown</li>
+              <li>Tất cả thẻ trong giao dịch phải cùng độ hiếm</li>
+            </ul>
+          </div>
         </div>
 
         {/* Submit button */}
-        <div className="sticky bottom-0 p-4 bg-gradient-to-t from-slate-50 to-transparent pt-6">
+        <div className="sticky bottom-0 p-4 pb-20 md:pb-4 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent pt-6">
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}

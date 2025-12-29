@@ -10,9 +10,13 @@
 
 import type * as admins from "../admins.js";
 import type * as cards from "../cards.js";
+import type * as chats from "../chats.js";
+import type * as cronJobs from "../cronJobs.js";
+import type * as crons from "../crons.js";
 import type * as events from "../events.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
+import type * as messages from "../messages.js";
 import type * as packs from "../packs.js";
 import type * as posts from "../posts.js";
 import type * as rarities from "../rarities.js";
@@ -36,9 +40,13 @@ import type {
 declare const fullApi: ApiFromModules<{
   admins: typeof admins;
   cards: typeof cards;
+  chats: typeof chats;
+  cronJobs: typeof cronJobs;
+  crons: typeof crons;
   events: typeof events;
   files: typeof files;
   http: typeof http;
+  messages: typeof messages;
   packs: typeof packs;
   posts: typeof posts;
   rarities: typeof rarities;

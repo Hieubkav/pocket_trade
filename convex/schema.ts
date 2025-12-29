@@ -59,6 +59,7 @@ export default defineSchema({
     password: v.string(),
     avatarUrl: v.optional(v.string()),
     legitPoint: v.number(), // default 0
+    tradePoint: v.optional(v.number()), // default 0, +1 khi giao dịch thành công
     friendCode: v.optional(v.string()),
     status: v.optional(v.string()), // "active" | "banned", default "active"
     lastSeenAt: v.optional(v.number()), // timestamp - fallback for crash/network loss
@@ -75,6 +76,8 @@ export default defineSchema({
     status: v.string(), // active, expired, cancelled, matched
     expiresAt: v.number(), // timestamp
     isHidden: v.boolean(), // default false
+    note: v.optional(v.string()), // Ghi chú giao dịch (max 50 chars)
+    rarity: v.optional(v.string()), // Độ hiếm của cards trong giao dịch
   })
     .index("by_trader", ["traderId"])
     .index("by_status", ["status"])
@@ -104,10 +107,16 @@ export default defineSchema({
   // 11. Chat
   chats: defineTable({
     tradePostId: v.id("tradePosts"),
-    traderHostId: v.id("traders"),
-    traderGuestId: v.id("traders"),
+    tradeRequestId: v.id("tradeRequests"),
+    traderHostId: v.id("traders"), // Chủ trade post
+    traderGuestId: v.id("traders"), // Người gửi request
+    status: v.string(), // "active" | "completed" | "cancelled"
+    hostConfirmed: v.optional(v.boolean()), // Host đã chốt chưa
+    guestConfirmed: v.optional(v.boolean()), // Guest đã chốt chưa
+    cancelledBy: v.optional(v.id("traders")), // Ai đã hủy
   })
     .index("by_trade_post", ["tradePostId"])
+    .index("by_trade_request", ["tradeRequestId"])
     .index("by_host", ["traderHostId"])
     .index("by_guest", ["traderGuestId"]),
 
