@@ -7,6 +7,7 @@ import { Plus, Search, Pencil, Trash2, Ban, CheckCircle, Info } from 'lucide-rea
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { isTraderOnline } from '@/app/contexts/TraderAuthContext';
 
 const getRank = (legitPoint: number) => {
   if (legitPoint > 1000) return { name: 'Kim Cương', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400' };
@@ -21,6 +22,7 @@ export default function TradersPage() {
   const updateStatus = useMutation(api.traders.updateStatus);
   const deleteTrader = useMutation(api.traders.adminDelete);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [onlineFilter, setOnlineFilter] = useState<string>('');
 
   const handleToggleBan = async (id: Id<"traders">, currentStatus: string | undefined) => {
     const newStatus = currentStatus === 'banned' ? 'active' : 'banned';
@@ -34,9 +36,16 @@ export default function TradersPage() {
   };
 
   const filteredTraders = traders?.filter(trader => {
-    if (!statusFilter) return true;
-    const traderStatus = trader.status || 'active';
-    return traderStatus === statusFilter;
+    // Filter by status
+    if (statusFilter) {
+      const traderStatus = trader.status || 'active';
+      if (traderStatus !== statusFilter) return false;
+    }
+    // Filter by online
+    const online = isTraderOnline(trader.isOnline, trader.lastSeenAt);
+    if (onlineFilter === 'online' && !online) return false;
+    if (onlineFilter === 'offline' && online) return false;
+    return true;
   });
 
   return (
@@ -86,13 +95,14 @@ export default function TradersPage() {
             <option value="active">Hoạt động</option>
             <option value="banned">Đã cấm</option>
           </select>
-          <select className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200">
-            <option value="">Tất cả Rank</option>
-            <option value="diamond">Kim Cương</option>
-            <option value="gold">Vàng</option>
-            <option value="silver">Bạc</option>
-            <option value="bronze">Đồng</option>
-            <option value="iron">Sắt</option>
+          <select 
+            value={onlineFilter}
+            onChange={(e) => setOnlineFilter(e.target.value)}
+            className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+          >
+            <option value="">Tất cả Online</option>
+            <option value="online">🟢 Đang online</option>
+            <option value="offline">⚫ Offline</option>
           </select>
         </div>
 
@@ -124,21 +134,30 @@ export default function TradersPage() {
                   <tr key={trader._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isBanned ? 'opacity-60' : ''}`}>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
-                        {trader.avatarUrl ? (
-                          <Image
-                            src={trader.avatarUrl}
-                            alt={trader.name}
-                            width={40}
-                            height={40}
-                            className="rounded-full object-cover"
+                        <div className="relative">
+                          {trader.avatarUrl ? (
+                            <Image
+                              src={trader.avatarUrl}
+                              alt={trader.name}
+                              width={40}
+                              height={40}
+                              className="rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+                              <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                                {trader.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                              </span>
+                            </div>
+                          )}
+                          {/* Online indicator */}
+                          <span 
+                            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${
+                              isTraderOnline(trader.isOnline, trader.lastSeenAt) ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'
+                            }`}
+                            title={isTraderOnline(trader.isOnline, trader.lastSeenAt) ? 'Online' : 'Offline'}
                           />
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-                            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-                              {trader.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                            </span>
-                          </div>
-                        )}
+                        </div>
                         <div>
                           <p className="font-medium text-slate-900 dark:text-white">{trader.name}</p>
                           <p className="text-sm text-slate-500 dark:text-slate-400">{trader.email}</p>

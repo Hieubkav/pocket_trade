@@ -12,6 +12,7 @@ import type * as admins from "../admins.js";
 import type * as cards from "../cards.js";
 import type * as events from "../events.js";
 import type * as files from "../files.js";
+import type * as http from "../http.js";
 import type * as packs from "../packs.js";
 import type * as posts from "../posts.js";
 import type * as rarities from "../rarities.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   cards: typeof cards;
   events: typeof events;
   files: typeof files;
+  http: typeof http;
   packs: typeof packs;
   posts: typeof posts;
   rarities: typeof rarities;

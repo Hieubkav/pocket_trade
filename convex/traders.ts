@@ -149,6 +149,20 @@ export const updateStatus = mutation({
   },
 });
 
+export const updateLastSeen = mutation({
+  args: { id: v.id("traders") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { lastSeenAt: Date.now(), isOnline: true });
+  },
+});
+
+export const setOffline = mutation({
+  args: { id: v.id("traders") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { isOnline: false });
+  },
+});
+
 export const updateProfile = mutation({
   args: {
     id: v.id("traders"),

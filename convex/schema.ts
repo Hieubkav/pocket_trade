@@ -61,6 +61,8 @@ export default defineSchema({
     legitPoint: v.number(), // default 0
     friendCode: v.optional(v.string()),
     status: v.optional(v.string()), // "active" | "banned", default "active"
+    lastSeenAt: v.optional(v.number()), // timestamp - fallback for crash/network loss
+    isOnline: v.optional(v.boolean()), // realtime online status
   })
     .index("by_email", ["email"])
     .index("by_name", ["name"])
