@@ -28,6 +28,28 @@ export const getByEmail = query({
   },
 });
 
+export const checkNameExists = query({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    const trader = await ctx.db
+      .query("traders")
+      .withIndex("by_name", (q) => q.eq("name", args.name))
+      .first();
+    return !!trader;
+  },
+});
+
+export const checkFriendCodeExists = query({
+  args: { friendCode: v.string() },
+  handler: async (ctx, args) => {
+    const trader = await ctx.db
+      .query("traders")
+      .withIndex("by_friend_code", (q) => q.eq("friendCode", args.friendCode))
+      .first();
+    return !!trader;
+  },
+});
+
 export const getById = query({
   args: { id: v.id("traders") },
   handler: async (ctx, args) => {
@@ -43,15 +65,37 @@ export const register = mutation({
     name: v.string(),
     email: v.string(),
     password: v.string(),
+    avatarUrl: v.optional(v.string()),
+    friendCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
+    // Check unique email
+    const existingEmail = await ctx.db
       .query("traders")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
-    
-    if (existing) {
+    if (existingEmail) {
       throw new Error("Email đã tồn tại");
+    }
+
+    // Check unique name
+    const existingName = await ctx.db
+      .query("traders")
+      .withIndex("by_name", (q) => q.eq("name", args.name))
+      .first();
+    if (existingName) {
+      throw new Error("Tên hiển thị đã tồn tại");
+    }
+
+    // Check unique friend code
+    if (args.friendCode) {
+      const existingFriendCode = await ctx.db
+        .query("traders")
+        .withIndex("by_friend_code", (q) => q.eq("friendCode", args.friendCode))
+        .first();
+      if (existingFriendCode) {
+        throw new Error("Friend Code đã tồn tại");
+      }
     }
 
     const hashedPassword = simpleHash(args.password);
@@ -62,6 +106,8 @@ export const register = mutation({
       password: hashedPassword,
       legitPoint: 0,
       status: "active",
+      avatarUrl: args.avatarUrl,
+      friendCode: args.friendCode,
     });
 
     const trader = await ctx.db.get(traderId);
@@ -116,6 +162,122 @@ export const updateProfile = mutation({
       Object.entries(updates).filter(([_, v]) => v !== undefined)
     );
     await ctx.db.patch(id, filteredUpdates);
+  },
+});
+
+// Admin functions
+export const adminCreate = mutation({
+  args: {
+    name: v.string(),
+    email: v.string(),
+    password: v.string(),
+    avatarUrl: v.optional(v.string()),
+    friendCode: v.optional(v.string()),
+    legitPoint: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Check unique email
+    const existingEmail = await ctx.db
+      .query("traders")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    if (existingEmail) throw new Error("Email đã tồn tại");
+
+    // Check unique name
+    const existingName = await ctx.db
+      .query("traders")
+      .withIndex("by_name", (q) => q.eq("name", args.name))
+      .first();
+    if (existingName) throw new Error("Tên hiển thị đã tồn tại");
+
+    // Check unique friend code
+    if (args.friendCode) {
+      const existingFriendCode = await ctx.db
+        .query("traders")
+        .withIndex("by_friend_code", (q) => q.eq("friendCode", args.friendCode))
+        .first();
+      if (existingFriendCode) throw new Error("Friend Code đã tồn tại");
+    }
+
+    const hashedPassword = simpleHash(args.password);
+    
+    const traderId = await ctx.db.insert("traders", {
+      name: args.name,
+      email: args.email,
+      password: hashedPassword,
+      legitPoint: args.legitPoint ?? 0,
+      status: "active",
+      avatarUrl: args.avatarUrl,
+      friendCode: args.friendCode,
+    });
+
+    return traderId;
+  },
+});
+
+export const adminUpdate = mutation({
+  args: {
+    id: v.id("traders"),
+    name: v.optional(v.string()),
+    email: v.optional(v.string()),
+    password: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+    friendCode: v.optional(v.string()),
+    legitPoint: v.optional(v.number()),
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const trader = await ctx.db.get(args.id);
+    if (!trader) throw new Error("Trader không tồn tại");
+
+    // Check unique name if changed
+    if (args.name && args.name !== trader.name) {
+      const nameToCheck = args.name;
+      const existingName = await ctx.db
+        .query("traders")
+        .withIndex("by_name", (q) => q.eq("name", nameToCheck))
+        .first();
+      if (existingName) throw new Error("Tên hiển thị đã tồn tại");
+    }
+
+    // Check unique email if changed
+    if (args.email && args.email !== trader.email) {
+      const emailToCheck = args.email;
+      const existingEmail = await ctx.db
+        .query("traders")
+        .withIndex("by_email", (q) => q.eq("email", emailToCheck))
+        .first();
+      if (existingEmail) throw new Error("Email đã tồn tại");
+    }
+
+    // Check unique friend code if changed
+    if (args.friendCode && args.friendCode !== trader.friendCode) {
+      const friendCodeToCheck = args.friendCode;
+      const existingFriendCode = await ctx.db
+        .query("traders")
+        .withIndex("by_friend_code", (q) => q.eq("friendCode", friendCodeToCheck))
+        .first();
+      if (existingFriendCode) throw new Error("Friend Code đã tồn tại");
+    }
+
+    const updates: Record<string, unknown> = {};
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.email !== undefined) updates.email = args.email;
+    if (args.avatarUrl !== undefined) updates.avatarUrl = args.avatarUrl;
+    if (args.friendCode !== undefined) updates.friendCode = args.friendCode;
+    if (args.legitPoint !== undefined) updates.legitPoint = args.legitPoint;
+    if (args.status !== undefined) updates.status = args.status;
+    if (args.password) updates.password = simpleHash(args.password);
+
+    await ctx.db.patch(args.id, updates);
+    return args.id;
+  },
+});
+
+export const adminDelete = mutation({
+  args: { id: v.id("traders") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
   },
 });
 

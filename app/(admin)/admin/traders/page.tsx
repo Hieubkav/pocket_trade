@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Plus, Search, Pencil, Trash2, Ban, CheckCircle, Info } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
@@ -18,11 +19,18 @@ const getRank = (legitPoint: number) => {
 export default function TradersPage() {
   const traders = useQuery(api.traders.list);
   const updateStatus = useMutation(api.traders.updateStatus);
+  const deleteTrader = useMutation(api.traders.adminDelete);
   const [statusFilter, setStatusFilter] = useState<string>('');
 
   const handleToggleBan = async (id: Id<"traders">, currentStatus: string | undefined) => {
     const newStatus = currentStatus === 'banned' ? 'active' : 'banned';
     await updateStatus({ id, status: newStatus });
+  };
+
+  const handleDelete = async (id: Id<"traders">, name: string) => {
+    if (confirm(`Bạn có chắc muốn xóa trader "${name}"?`)) {
+      await deleteTrader({ id });
+    }
   };
 
   const filteredTraders = traders?.filter(trader => {
@@ -116,11 +124,21 @@ export default function TradersPage() {
                   <tr key={trader._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isBanned ? 'opacity-60' : ''}`}>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-                          <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-                            {trader.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                          </span>
-                        </div>
+                        {trader.avatarUrl ? (
+                          <Image
+                            src={trader.avatarUrl}
+                            alt={trader.name}
+                            width={40}
+                            height={40}
+                            className="rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+                            <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                              {trader.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                            </span>
+                          </div>
+                        )}
                         <div>
                           <p className="font-medium text-slate-900 dark:text-white">{trader.name}</p>
                           <p className="text-sm text-slate-500 dark:text-slate-400">{trader.email}</p>
@@ -166,7 +184,10 @@ export default function TradersPage() {
                         >
                           <Pencil size={16} />
                         </Link>
-                        <button className="p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => handleDelete(trader._id, trader.name)}
+                          className="p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        >
                           <Trash2 size={16} />
                         </button>
                       </div>

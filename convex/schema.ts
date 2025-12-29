@@ -63,6 +63,8 @@ export default defineSchema({
     status: v.optional(v.string()), // "active" | "banned", default "active"
   })
     .index("by_email", ["email"])
+    .index("by_name", ["name"])
+    .index("by_friend_code", ["friendCode"])
     .index("by_status", ["status"]),
 
   // 8. Trade-post
