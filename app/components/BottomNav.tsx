@@ -18,12 +18,16 @@ const BottomNav: React.FC<BottomNavProps> = ({ currentView }) => {
     api.tradePosts.countTodayPosts,
     trader ? { traderId: trader._id } : 'skip'
   );
+  const unreadCount = useQuery(
+    api.messages.countUnread,
+    trader ? { traderId: trader._id } : 'skip'
+  );
   
   const maxPostsPerDay = settings?.limitTradePostPerTrader ?? 5;
   const remainingPosts = maxPostsPerDay - (todayPostsCount ?? 0);
   const tabs = [
-    { id: 'library', icon: LayoutGrid, href: '/' },
-    { id: 'trade', icon: ArrowLeftRight, href: '/trade' },
+    { id: 'trade', icon: ArrowLeftRight, href: '/' },
+    { id: 'library', icon: LayoutGrid, href: '/library' },
     { id: 'chat', icon: MessageSquare, href: '/chat' },
     { id: 'profile', icon: User, href: '/profile' },
   ] as const;
@@ -59,6 +63,12 @@ const BottomNav: React.FC<BottomNavProps> = ({ currentView }) => {
                     : 'bg-red-500 text-white'}
                 `}>
                   {remainingPosts}
+                </span>
+              )}
+              
+              {tab.id === 'chat' && trader && (unreadCount ?? 0) > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center text-[9px] font-bold rounded-full px-1 bg-pink-500 text-white animate-pulse">
+                  {(unreadCount ?? 0) > 99 ? '99+' : unreadCount}
                 </span>
               )}
             </div>

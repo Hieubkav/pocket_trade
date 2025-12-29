@@ -171,11 +171,37 @@ export const updateProfile = mutation({
     friendCode: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const trader = await ctx.db.get(args.id);
+    if (!trader) throw new Error("Trader không tồn tại");
+
+    // Check unique name if changed
+    if (args.name && args.name !== trader.name) {
+      const existingName = await ctx.db
+        .query("traders")
+        .withIndex("by_name", (q) => q.eq("name", args.name!))
+        .first();
+      if (existingName) throw new Error("Tên hiển thị đã tồn tại");
+    }
+
+    // Check unique friend code if changed
+    if (args.friendCode && args.friendCode !== trader.friendCode) {
+      const existingFriendCode = await ctx.db
+        .query("traders")
+        .withIndex("by_friend_code", (q) => q.eq("friendCode", args.friendCode!))
+        .first();
+      if (existingFriendCode) throw new Error("Friend Code đã tồn tại");
+    }
+
     const { id, ...updates } = args;
     const filteredUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, v]) => v !== undefined)
     );
     await ctx.db.patch(id, filteredUpdates);
+    
+    const updated = await ctx.db.get(id);
+    if (!updated) throw new Error("Lỗi cập nhật");
+    const { password: _, ...traderWithoutPassword } = updated;
+    return traderWithoutPassword;
   },
 });
 

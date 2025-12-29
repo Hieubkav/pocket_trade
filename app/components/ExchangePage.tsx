@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Plus, Clock, ArrowRightLeft, Loader2, Filter, ChevronDown, ChevronLeft, ChevronRight, Search, X, MessageCircle, Check, XCircle } from 'lucide-react';
+import { Plus, Clock, ArrowRightLeft, Loader2, Filter, ChevronDown, ChevronLeft, ChevronRight, Search, X, MessageCircle, Check, XCircle, User } from 'lucide-react';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
 
 type TabType = 'public-offers' | 'my-offers' | 'my-requests' | 'history';
@@ -334,7 +334,21 @@ const ExchangePage: React.FC = () => {
       {/* My Requests Tab - Outgoing Requests */}
       {activeTab === 'my-requests' && (
         <div className="px-3 py-3 space-y-2">
-          {outgoingRequests === undefined ? (
+          {!trader ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                <User className="w-8 h-8 text-slate-300" />
+              </div>
+              <p className="text-sm font-bold text-slate-800 mb-2">Đăng nhập để xem</p>
+              <p className="text-xs text-slate-400 mb-4">Bạn cần đăng nhập để xem các request đã gửi</p>
+              <button
+                onClick={() => router.push('/login')}
+                className="px-6 py-2 bg-teal-600 text-white text-sm font-bold rounded-lg"
+              >
+                Đăng nhập
+              </button>
+            </div>
+          ) : outgoingRequests === undefined ? (
             <div className="flex justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
             </div>
@@ -399,7 +413,26 @@ const ExchangePage: React.FC = () => {
       {/* Trade List */}
       {activeTab !== 'my-requests' && (
       <div className="px-3 py-3 space-y-2">
-        {tradePostsResult === undefined ? (
+        {/* Require login for personal tabs */}
+        {!trader && (activeTab === 'my-offers' || activeTab === 'history') ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto bg-slate-100 rounded-full flex items-center justify-center mb-4">
+              <User className="w-8 h-8 text-slate-300" />
+            </div>
+            <p className="text-sm font-bold text-slate-800 mb-2">Đăng nhập để xem</p>
+            <p className="text-xs text-slate-400 mb-4">
+              {activeTab === 'my-offers' 
+                ? 'Bạn cần đăng nhập để xem và quản lý bài đăng của mình'
+                : 'Bạn cần đăng nhập để xem lịch sử giao dịch'}
+            </p>
+            <button
+              onClick={() => router.push('/login')}
+              className="px-6 py-2 bg-teal-600 text-white text-sm font-bold rounded-lg"
+            >
+              Đăng nhập
+            </button>
+          </div>
+        ) : tradePostsResult === undefined ? (
           <div className="flex justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
           </div>

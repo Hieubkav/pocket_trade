@@ -352,3 +352,68 @@ export const create = mutation({
     return postId;
   },
 });
+
+// Lấy trade posts liên quan đến 1 card (người đang tìm hoặc đang có card này)
+export const listByCard = query({
+  args: { 
+    cardId: v.id("cards"),
+    type: v.union(v.literal("want"), v.literal("have")),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 20;
+    
+    // Find tradePostCards containing this card
+    const tradePostCards = await ctx.db
+      .query("tradePostCards")
+      .filter(q => q.and(
+        q.eq(q.field("cardId"), args.cardId),
+        q.eq(q.field("type"), args.type)
+      ))
+      .collect();
+    
+    const postIds = [...new Set(tradePostCards.map(tpc => tpc.tradePostId))];
+    
+    // Get trade posts
+    const postsRaw = await Promise.all(postIds.map(id => ctx.db.get(id)));
+    const activePosts = postsRaw
+      .filter(p => p && p.status === "active" && !p.isHidden && p.expiresAt > Date.now())
+      .slice(0, limit);
+    
+    // Get related data
+    const traders = await ctx.db.query("traders").collect();
+    const allTradePostCards = await ctx.db.query("tradePostCards").collect();
+    const cards = await ctx.db.query("cards").collect();
+    const rarities = await ctx.db.query("rarities").collect();
+    
+    return activePosts.map(post => {
+      if (!post) return null;
+      const trader = traders.find(t => t._id === post.traderId);
+      const postCards = allTradePostCards.filter(c => c.tradePostId === post._id);
+      
+      const haveCardIds = postCards.filter(c => c.type === "have").map(c => c.cardId);
+      const wantCardIds = postCards.filter(c => c.type === "want").map(c => c.cardId);
+      
+      const enrichCard = (cardId: typeof cards[0]["_id"]) => {
+        const card = cards.find(c => c._id === cardId);
+        if (!card) return null;
+        const rarity = rarities.find(r => r._id === card.rarityId);
+        return { _id: card._id, name: card.name, imageUrl: card.imageUrl, rarityName: rarity?.name || "" };
+      };
+      
+      return {
+        _id: post._id,
+        status: post.status,
+        expiresAt: post.expiresAt,
+        note: post.note,
+        _creationTime: post._creationTime,
+        traderName: trader?.name || "",
+        traderAvatar: trader?.avatarUrl || "",
+        traderIsOnline: trader?.isOnline || false,
+        traderTradePoint: trader?.tradePoint ?? 0,
+        haveCards: haveCardIds.map(enrichCard).filter(Boolean),
+        wantCards: wantCardIds.map(enrichCard).filter(Boolean),
+      };
+    }).filter(Boolean);
+  },
+});

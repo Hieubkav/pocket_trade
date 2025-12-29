@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation, useConvex } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 
@@ -11,6 +11,7 @@ interface Trader {
   email: string;
   avatarUrl?: string;
   legitPoint: number;
+  tradePoint?: number;
   friendCode?: string;
   status?: string;
 }
@@ -20,6 +21,7 @@ interface TraderAuthContextType {
   setTrader: (trader: Trader | null) => void;
   logout: () => void;
   isLoading: boolean;
+  refreshTrader: () => Promise<void>;
 }
 
 const TraderAuthContext = createContext<TraderAuthContextType | undefined>(undefined);
@@ -30,6 +32,7 @@ const ONLINE_TIMEOUT = 60000; // 1 minute - fallback for crash/network loss
 export function TraderAuthProvider({ children }: { children: ReactNode }) {
   const [trader, setTraderState] = useState<Trader | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const convex = useConvex();
   const updateLastSeen = useMutation(api.traders.updateLastSeen);
   const setOffline = useMutation(api.traders.setOffline);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
@@ -120,8 +123,20 @@ export function TraderAuthProvider({ children }: { children: ReactNode }) {
     setTrader(null);
   }, [trader?._id, setOffline, setTrader]);
 
+  const refreshTrader = useCallback(async () => {
+    if (!trader?._id) return;
+    try {
+      const updated = await convex.query(api.traders.getById, { id: trader._id });
+      if (updated) {
+        setTrader(updated as Trader);
+      }
+    } catch {
+      // Ignore errors
+    }
+  }, [trader?._id, convex, setTrader]);
+
   return (
-    <TraderAuthContext.Provider value={{ trader, setTrader, logout, isLoading }}>
+    <TraderAuthContext.Provider value={{ trader, setTrader, logout, isLoading, refreshTrader }}>
       {children}
     </TraderAuthContext.Provider>
   );

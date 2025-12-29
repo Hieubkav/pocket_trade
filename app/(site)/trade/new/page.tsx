@@ -9,7 +9,7 @@ export default function NewTradePage() {
   return (
     <CreateTradePage 
       onBack={() => router.back()}
-      onSuccess={() => router.push('/trade')}
+      onSuccess={() => router.push('/')}
     />
   );
 }

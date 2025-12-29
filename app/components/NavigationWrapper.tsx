@@ -10,10 +10,11 @@ export default function NavigationWrapper({ children }: { children: React.ReactN
   const isDetailPage = pathname.startsWith('/card/') || pathname.startsWith('/chat/') && pathname !== '/chat';
   
   const getCurrentView = (): 'library' | 'trade' | 'chat' | 'profile' => {
-    if (pathname === '/trade') return 'trade';
+    if (pathname === '/' || pathname.startsWith('/trade')) return 'trade';
+    if (pathname === '/library') return 'library';
     if (pathname.startsWith('/chat')) return 'chat';
     if (pathname === '/profile') return 'profile';
-    return 'library';
+    return 'trade';
   };
 
   return (

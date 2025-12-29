@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
-import { Search, Loader2, MessageSquare, ArrowDownToLine, ArrowUpFromLine, Check, X } from 'lucide-react';
+import { Search, Loader2, MessageSquare, ArrowDownToLine, ArrowUpFromLine, Check, X, LogIn } from 'lucide-react';
 
 // Tính rank từ tradePoint
 const getRank = (tradePoint: number) => {
@@ -33,6 +34,7 @@ interface ChatPageProps {
 }
 
 const ChatPage: React.FC<ChatPageProps> = ({ onChatClick }) => {
+  const router = useRouter();
   const { trader } = useTraderAuth();
   const [searchTerm, setSearchTerm] = React.useState('');
 
@@ -47,8 +49,24 @@ const ChatPage: React.FC<ChatPageProps> = ({ onChatClick }) => {
 
   if (!trader) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-slate-500">Vui lòng đăng nhập để xem tin nhắn</p>
+      <div className="min-h-screen bg-white pb-20">
+        <div className="sticky top-0 z-50 bg-white px-4 py-5 flex items-center justify-center border-b border-slate-50">
+          <h1 className="text-lg font-black text-slate-800 tracking-tight">Trò chuyện</h1>
+        </div>
+        <div className="flex flex-col items-center justify-center px-6 pt-20">
+          <div className="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center mb-6">
+            <MessageSquare className="w-10 h-10 text-teal-400" />
+          </div>
+          <h2 className="text-lg font-bold text-slate-800 mb-2">Đăng nhập để chat</h2>
+          <p className="text-sm text-slate-400 text-center mb-6">Bạn cần đăng nhập để xem và gửi tin nhắn với các trader khác</p>
+          <button
+            onClick={() => router.push('/login')}
+            className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-colors"
+          >
+            <LogIn className="w-5 h-5" />
+            Đăng nhập
+          </button>
+        </div>
       </div>
     );
   }

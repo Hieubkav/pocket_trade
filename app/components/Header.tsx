@@ -23,8 +23,8 @@ const Header: React.FC<HeaderProps> = ({ currentView }) => {
   const remainingPosts = maxPostsPerDay - (todayPostsCount ?? 0);
 
   const navItems = [
-    { id: 'library', label: 'THƯ VIỆN', icon: LayoutGrid, href: '/' },
-    { id: 'trade', label: 'GIAO DỊCH', icon: ArrowLeftRight, href: '/trade' },
+    { id: 'trade', label: 'GIAO DỊCH', icon: ArrowLeftRight, href: '/' },
+    { id: 'library', label: 'THƯ VIỆN', icon: LayoutGrid, href: '/library' },
     { id: 'chat', label: 'TRÒ CHUYỆN', icon: MessageSquare, href: '/chat' },
     { id: 'profile', label: 'CÁ NHÂN', icon: User, href: '/profile' },
   ] as const;
