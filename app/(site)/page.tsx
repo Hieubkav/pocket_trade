@@ -62,11 +62,14 @@ export default function Home() {
         hp: 0,
         type: card.type as PokemonType,
         rarity: parseInt(card.rarityName?.replace(/[^\d]/g, '') || '1') || 1,
+        rarityName: card.rarityName,
+        rarityImageUrl: card.rarityImageUrl,
         imageUrl: card.imageUrl,
-        subName: card.subtype,
+        subName: card.supertype === 'pokemon' ? card.subtype : '',
         collection: card.setName || card.packName,
         category: card.supertype === 'pokemon' ? 'Pokemon' : 'Trainer',
         cardNumber: card.cardNumber,
+        setCode: card.setCode,
       }));
       
       if (cursor === undefined) {
@@ -162,7 +165,7 @@ export default function Home() {
                     onClick={loadMore}
                     className="px-6 py-2 bg-slate-100 text-slate-600 rounded-full text-xs font-bold hover:bg-slate-200 transition-all"
                   >
-                    Tai them
+                    Tải thêm
                   </button>
                 )}
               </div>
@@ -172,8 +175,8 @@ export default function Home() {
               <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 border border-slate-200 shadow-sm">
                   <span className="text-3xl">🔍</span>
               </div>
-              <h2 className="text-lg font-bold text-slate-800 mb-2 uppercase tracking-widest">Khong tim thay ket qua</h2>
-              <p className="text-sm font-medium">Thu dieu chinh tu khoa hoac bo loc cua ban.</p>
+              <h2 className="text-lg font-bold text-slate-800 mb-2 uppercase tracking-widest">Không tìm thấy kết quả</h2>
+              <p className="text-sm font-medium">Thử điều chỉnh từ khóa hoặc bộ lọc của bạn.</p>
               <button 
                   onClick={() => {
                     setSearchTerm('');
@@ -181,7 +184,7 @@ export default function Home() {
                   }}
                   className="mt-6 px-6 py-2 bg-slate-900 text-white rounded-full text-xs font-bold hover:bg-slate-800 transition-all uppercase tracking-tighter"
               >
-                  Xoa tat ca bo loc
+                  Xóa tất cả bộ lọc
               </button>
             </div>
           )}

@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2, ArrowUpDown, Database, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useQuery, useMutation, useAction } from 'convex/react';
+import { Plus, Search, Pencil, Trash2, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
@@ -30,13 +30,11 @@ export default function CardsPage() {
   const cards = useQuery(api.cards.list);
   const removeCard = useMutation(api.cards.remove);
   const bulkRemoveCards = useMutation(api.cards.bulkRemove);
-  const seedAllCards = useAction(api.seedCards.seedAllCards);
   const [search, setSearch] = useState('');
   const [filterSupertype, setFilterSupertype] = useState('');
   const [filterType, setFilterType] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [isSeeding, setIsSeeding] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize>(20);
   const [selectedIds, setSelectedIds] = useState<Set<CardId>>(new Set());
@@ -103,24 +101,6 @@ export default function CardsPage() {
     }
   };
 
-  const handleSeed = async () => {
-    if (confirm('Seed tất cả cards từ TCGdex API?\nCards cũ sẽ bị xóa.\nQuá trình này có thể mất 2-3 phút.')) {
-      setIsSeeding(true);
-      try {
-        const result = await seedAllCards({});
-        if (result.success) {
-          toast.success(`Seed hoàn tất! Tổng: ${result.totalCards} cards`);
-        } else {
-          toast.error('Lỗi: ' + (result.error || 'Unknown error'));
-        }
-      } catch (error) {
-        toast.error('Lỗi khi seed: ' + (error as Error).message);
-      } finally {
-        setIsSeeding(false);
-      }
-    }
-  };
-
   const handlePageSizeChange = (newSize: PageSize) => {
     setPageSize(newSize);
     setCurrentPage(1);
@@ -133,23 +113,13 @@ export default function CardsPage() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Thẻ Bài</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Quản lý thẻ Pokemon TCG Pocket</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleSeed}
-            disabled={isSeeding}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50"
-          >
-            <Database size={20} />
-            <span>{isSeeding ? 'Đang seed...' : 'Seed Cards'}</span>
-          </button>
-          <Link
-            href="/admin/cards/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors font-medium"
-          >
-            <Plus size={20} />
-            <span>Thêm thẻ</span>
-          </Link>
-        </div>
+        <Link
+          href="/admin/cards/new"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors font-medium"
+        >
+          <Plus size={20} />
+          <span>Thêm thẻ</span>
+        </Link>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
@@ -217,17 +187,18 @@ export default function CardsPage() {
                 <th onClick={() => toggleSort('cardNumber')} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
                   <span className="inline-flex items-center gap-1">Số thẻ <ArrowUpDown size={14} className={sortField === 'cardNumber' ? 'text-indigo-500' : ''} /></span>
                 </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Set</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {!cards ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
               ) : filteredAndSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
                     {search || filterSupertype || filterType ? 'Không tìm thấy thẻ nào' : 'Chưa có thẻ nào'}
                   </td>
                 </tr>
@@ -263,7 +234,10 @@ export default function CardsPage() {
                   </td>
                   <td className="px-4 py-4 text-slate-600 dark:text-slate-400 capitalize">{card.supertype}</td>
                   <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{card.type}</td>
-                  <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{card.cardNumber}</td>
+                  <td className="px-4 py-4 text-slate-600 dark:text-slate-400 font-mono text-sm">
+                    {card.setCode ? `${card.setCode}-${card.cardNumber}` : card.cardNumber}
+                  </td>
+                  <td className="px-4 py-4 text-slate-600 dark:text-slate-400 text-sm">{card.setName}</td>
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-end gap-1">
                       <Link 

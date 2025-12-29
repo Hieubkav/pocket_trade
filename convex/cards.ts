@@ -16,8 +16,10 @@ export const list = query({
       return {
         ...card,
         rarityName: rarity?.name || "",
+        rarityImageUrl: rarity?.imageUrl || "",
         packName: pack?.name || "",
         setName: set?.name || "",
+        setCode: set?.setCode || "",
       };
     });
   },
@@ -48,13 +50,15 @@ export const listPaginated = query({
       return {
         ...card,
         rarityName: rarity?.name || "",
+        rarityImageUrl: rarity?.imageUrl || "",
         packName: pack?.name || "",
         setName: set?.name || "",
+        setCode: set?.setCode || "",
       };
     });
     
     // Filter
-    let filtered = enrichedCards.filter(card => {
+    const filtered = enrichedCards.filter(card => {
       const searchLower = (args.search || "").toLowerCase();
       const matchesSearch = !args.search || 
         card.name.toLowerCase().includes(searchLower) ||
@@ -87,7 +91,13 @@ export const listPaginated = query({
           break;
         case "ID":
         default:
-          comparison = a.cardNumber.localeCompare(b.cardNumber);
+          // Sort theo setCode (giảm - set mới lên trước), rồi số thẻ (tăng)
+          comparison = b.setCode.localeCompare(a.setCode); // DESC cho setCode
+          if (comparison === 0) {
+            const numA = parseInt(a.cardNumber) || 0;
+            const numB = parseInt(b.cardNumber) || 0;
+            comparison = numA - numB; // ASC cho cardNumber
+          }
           break;
       }
       return sortDir === "ASC" ? comparison : -comparison;

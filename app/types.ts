@@ -19,11 +19,14 @@ export interface PokemonCard {
   hp: number;
   type: PokemonType;
   rarity: number;
+  rarityName?: string;
+  rarityImageUrl?: string;
   imageUrl: string;
   subName: string;
   collection: string;
   category: CardCategory;
   cardNumber?: string;
+  setCode?: string;
 }
 
 export type SortOption = 'ID' | 'NAME' | 'TYPE';

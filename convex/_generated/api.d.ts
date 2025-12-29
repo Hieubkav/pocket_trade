@@ -17,6 +17,7 @@ import type * as posts from "../posts.js";
 import type * as rarities from "../rarities.js";
 import type * as seed from "../seed.js";
 import type * as seedCards from "../seedCards.js";
+import type * as seedData from "../seedData.js";
 import type * as series from "../series.js";
 import type * as sets from "../sets.js";
 import type * as settings from "../settings.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   rarities: typeof rarities;
   seed: typeof seed;
   seedCards: typeof seedCards;
+  seedData: typeof seedData;
   series: typeof series;
   sets: typeof sets;
   settings: typeof settings;

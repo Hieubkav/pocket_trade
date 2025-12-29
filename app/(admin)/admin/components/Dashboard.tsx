@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import SeedManager from './SeedManager';
 
 type TimeRange = 'today' | 'week' | 'month' | '3months' | 'year' | 'all';
 
@@ -227,6 +228,11 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Seed Manager */}
+          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <SeedManager />
           </div>
         </>
       )}

@@ -23,12 +23,14 @@ const PACK_IMAGES: Record<string, string> = {
   "Eevee": "/images/packs/A3b.webp",
   "Ho-Oh": "/images/packs/ho-oh.webp",
   "Lugia": "/images/packs/lugia.webp",
-  "Latios & Latias": "/images/packs/A4a.webp",
+  "Suicune": "/images/packs/A4a.webp",
   "Deluxe ex": "/images/packs/A4B.webp",
   "Mega Altaria": "/images/packs/mega-altaria.webp",
   "Mega Blaziken": "/images/packs/mega-blaziken.webp",
   "Mega Gyarados": "/images/packs/mega-gyarados.webp",
   "Crimson Blaze": "/images/packs/B1A.webp",
+  "Promo-A": "/images/packs/promo-a-vol1.webp",
+  "Promo-B": "/images/packs/promo-a-vol1.webp",
 };
 
 const SETS_DATA = [
@@ -101,11 +103,11 @@ const SETS_DATA = [
     setCode: "A4a",
     seriesName: "A Series",
     imageUrl: "/images/logos/A4a.png",
-    packs: ["Latios & Latias"],
+    packs: ["Suicune"],
   },
   {
     name: "Deluxe Pack ex",
-    setCode: "A4b",
+    setCode: "A4B",
     seriesName: "A Series",
     imageUrl: "/images/logos/A4B.webp",
     packs: ["Deluxe ex"],
@@ -120,7 +122,7 @@ const SETS_DATA = [
   },
   {
     name: "Crimson Blaze",
-    setCode: "B1a",
+    setCode: "B1A",
     seriesName: "B Series",
     imageUrl: "/images/logos/B1A.webp",
     packs: ["Crimson Blaze"],
@@ -128,17 +130,17 @@ const SETS_DATA = [
   // Promo Sets
   {
     name: "Promo-A",
-    setCode: "PROMO-A",
+    setCode: "P-A",
     seriesName: "Promo",
     imageUrl: "/images/logos/P-A.webp",
-    packs: [],
+    packs: ["Promo-A"],
   },
   {
     name: "Promo-B",
-    setCode: "PROMO-B",
+    setCode: "P-B",
     seriesName: "Promo",
     imageUrl: "/images/logos/P-B.webp",
-    packs: [],
+    packs: ["Promo-B"],
   },
 ];
 

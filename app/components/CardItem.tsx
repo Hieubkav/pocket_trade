@@ -50,7 +50,7 @@ const CardItem: React.FC<CardItemProps> = ({ card, onClick }) => {
             />
             {card.cardNumber && (
               <div className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[8px] font-bold text-white tracking-tighter">
-                {card.cardNumber}
+                {card.setCode ? `${card.setCode}-${card.cardNumber}` : card.cardNumber}
               </div>
             )}
         </div>
@@ -59,18 +59,23 @@ const CardItem: React.FC<CardItemProps> = ({ card, onClick }) => {
       <div className="flex flex-col gap-0.5 px-0.5">
         <div className="flex justify-between items-center">
           <h3 className="font-bold text-[10px] sm:text-xs md:text-sm lg:text-[15px] tracking-tight text-slate-900 uppercase group-hover:text-teal-600 transition-colors leading-tight truncate">
-            {card.name} <span className="ml-0.5">{card.subName}</span>
+            {card.name}
           </h3>
         </div>
         
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-0.5 md:gap-1">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div 
-                key={i} 
-                className={`w-1 md:w-1.5 h-1 md:h-1.5 rounded-full ${i < card.rarity ? 'bg-slate-600' : 'bg-slate-200'}`}
+            {card.rarityImageUrl ? (
+              <img 
+                src={card.rarityImageUrl} 
+                alt={card.rarityName || 'rarity'} 
+                className="h-3 md:h-4 w-auto object-contain"
               />
-            ))}
+            ) : (
+              <span className="text-[8px] md:text-[10px] text-slate-500 font-medium">
+                {card.rarityName || '◆'}
+              </span>
+            )}
           </div>
           <span className="text-[7px] md:text-[9px] text-slate-400 truncate max-w-[70px] md:max-w-[110px] font-bold uppercase tracking-tighter">
             {card.collection}

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2, ArrowUpDown, Database, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -17,12 +17,10 @@ export default function SetsPage() {
   const seriesList = useQuery(api.series.list);
   const removeSet = useMutation(api.sets.remove);
   const bulkRemoveSets = useMutation(api.sets.bulkRemove);
-  const seedAll = useMutation(api.seed.seedAll);
   const [search, setSearch] = useState('');
   const [filterSeries, setFilterSeries] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [isSeeding, setIsSeeding] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize>(10);
   const [selectedIds, setSelectedIds] = useState<Set<Id<"sets">>>(new Set());
@@ -106,20 +104,6 @@ export default function SetsPage() {
     }
   };
 
-  const handleSeed = async () => {
-    if (confirm('Seed dữ liệu Pokemon TCG Pocket? Dữ liệu cũ sẽ bị xóa.')) {
-      setIsSeeding(true);
-      try {
-        const result = await seedAll({});
-        toast.success(`Seed thành công! ${result.seriesCount} series, ${result.setsCount} sets, ${result.packsCount} packs`);
-      } catch (error) {
-        toast.error('Lỗi khi seed: ' + (error as Error).message);
-      } finally {
-        setIsSeeding(false);
-      }
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -127,23 +111,13 @@ export default function SetsPage() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Sets</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1">Quản lý bộ sưu tập thẻ</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleSeed}
-            disabled={isSeeding}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50"
-          >
-            <Database size={20} />
-            <span>{isSeeding ? 'Đang seed...' : 'Seed Data'}</span>
-          </button>
-          <Link
-            href="/admin/sets/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors font-medium"
-          >
-            <Plus size={20} />
-            <span>Thêm Set</span>
-          </Link>
-        </div>
+        <Link
+          href="/admin/sets/new"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-indigo-600 text-white rounded-lg hover:bg-slate-800 dark:hover:bg-indigo-700 transition-colors font-medium"
+        >
+          <Plus size={20} />
+          <span>Thêm Set</span>
+        </Link>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
