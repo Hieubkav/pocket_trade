@@ -15,7 +15,8 @@ export default function Home() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allCards, setAllCards] = useState<PokemonCard[]>([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const loadMoreFnRef = useRef<() => void>(() => {});
+  const observerRef = useRef<IntersectionObserver | null>(null);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -101,23 +102,31 @@ export default function Home() {
     }
   }, [cardsData, isLoadingMore]);
 
-  // Infinite scroll observer
+  // Keep ref updated with latest loadMore
   useEffect(() => {
-    const observer = new IntersectionObserver(
+    loadMoreFnRef.current = loadMore;
+  }, [loadMore]);
+
+  // Create observer once
+  useEffect(() => {
+    observerRef.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          loadMore();
+          loadMoreFnRef.current();
         }
       },
       { threshold: 0.1 }
     );
+    return () => observerRef.current?.disconnect();
+  }, []);
 
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current);
+  // Callback ref - observe element when it renders
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    if (node && observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current.observe(node);
     }
-
-    return () => observer.disconnect();
-  }, [loadMore]);
+  }, []);
 
   if (cardsData === undefined && allCards.length === 0) {
     return (
@@ -156,17 +165,12 @@ export default function Home() {
               </div>
               
               {/* Load more trigger */}
-              <div ref={loadMoreRef} className="py-8 flex justify-center">
+              <div ref={sentinelRef} className="py-8 flex justify-center">
                 {isLoadingMore && (
                   <div className="animate-spin w-6 h-6 border-3 border-teal-600 border-t-transparent rounded-full" />
                 )}
                 {cardsData?.hasMore && !isLoadingMore && (
-                  <button
-                    onClick={loadMore}
-                    className="px-6 py-2 bg-slate-100 text-slate-600 rounded-full text-xs font-bold hover:bg-slate-200 transition-all"
-                  >
-                    Tải thêm
-                  </button>
+                  <div className="h-1" /> 
                 )}
               </div>
             </>

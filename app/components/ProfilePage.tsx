@@ -42,8 +42,8 @@ const ProfilePage: React.FC = () => {
             <LogIn className="w-12 h-12 text-teal-400" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-white mb-2">Chao mung den Pocket Trade!</h2>
-            <p className="text-white/60 text-sm">Dang nhap de quan ly tai khoan va giao dich the</p>
+            <h2 className="text-xl font-black text-white mb-2">Chào mừng đến Pocket Trade!</h2>
+            <p className="text-white/60 text-sm">Đăng nhập để quản lý tài khoản và giao dịch thẻ</p>
           </div>
           <div className="flex flex-col gap-3">
             <Link
@@ -51,14 +51,14 @@ const ProfilePage: React.FC = () => {
               className="flex items-center justify-center gap-2 bg-teal-500 text-white px-8 py-4 rounded-2xl font-bold hover:bg-teal-600 transition-colors"
             >
               <LogIn size={20} />
-              Dang nhap
+              Đăng nhập
             </Link>
             <Link
               href="/register"
               className="flex items-center justify-center gap-2 bg-white/10 text-white px-8 py-4 rounded-2xl font-bold hover:bg-white/20 transition-colors"
             >
               <UserPlus size={20} />
-              Dang ky tai khoan
+              Đăng ký tài khoản
             </Link>
           </div>
         </div>
@@ -124,7 +124,7 @@ const ProfilePage: React.FC = () => {
           className="flex items-center gap-2 text-white/50 text-sm hover:text-white transition-colors"
         >
           <LogOut size={16} />
-          Dang xuat
+          Đăng xuất
         </button>
       </div>
 
