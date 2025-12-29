@@ -3,12 +3,24 @@
 import React from 'react';
 import Link from 'next/link';
 import { LayoutGrid, MessageSquare, User, ArrowLeftRight } from 'lucide-react';
+import { useTraderAuth } from '../contexts/TraderAuthContext';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 interface BottomNavProps {
   currentView: 'library' | 'trade' | 'chat' | 'profile';
 }
 
 const BottomNav: React.FC<BottomNavProps> = ({ currentView }) => {
+  const { trader } = useTraderAuth();
+  const settings = useQuery(api.settings.get);
+  const todayPostsCount = useQuery(
+    api.tradePosts.countTodayPosts,
+    trader ? { traderId: trader._id } : 'skip'
+  );
+  
+  const maxPostsPerDay = settings?.limitTradePostPerTrader ?? 5;
+  const remainingPosts = maxPostsPerDay - (todayPostsCount ?? 0);
   const tabs = [
     { id: 'library', icon: LayoutGrid, href: '/' },
     { id: 'trade', icon: ArrowLeftRight, href: '/trade' },
@@ -33,10 +45,22 @@ const BottomNav: React.FC<BottomNavProps> = ({ currentView }) => {
             )}
             
             <div className={`
-                p-2 transition-all duration-200
+                relative p-2 transition-all duration-200
                 ${currentView === tab.id ? 'scale-110' : ''}
             `}>
               <tab.icon className={`w-6 h-6 ${currentView === tab.id ? 'stroke-[2.5px]' : 'stroke-[2px]'}`} />
+              
+              {tab.id === 'trade' && trader && (
+                <span className={`
+                  absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center
+                  text-[9px] font-bold rounded-full px-1
+                  ${remainingPosts > 0 
+                    ? 'bg-amber-400 text-amber-900' 
+                    : 'bg-red-500 text-white'}
+                `}>
+                  {remainingPosts}
+                </span>
+              )}
             </div>
           </Link>
         ))}

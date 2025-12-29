@@ -4,6 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { LayoutGrid, MessageSquare, User, ArrowLeftRight, LogIn, LogOut } from 'lucide-react';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 interface HeaderProps {
   currentView: 'library' | 'trade' | 'chat' | 'profile';
@@ -11,6 +13,14 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ currentView }) => {
   const { trader, logout, isLoading } = useTraderAuth();
+  const settings = useQuery(api.settings.get);
+  const todayPostsCount = useQuery(
+    api.tradePosts.countTodayPosts,
+    trader ? { traderId: trader._id } : 'skip'
+  );
+  
+  const maxPostsPerDay = settings?.limitTradePostPerTrader ?? 5;
+  const remainingPosts = maxPostsPerDay - (todayPostsCount ?? 0);
 
   const navItems = [
     { id: 'library', label: 'THƯ VIỆN', icon: LayoutGrid, href: '/' },
@@ -43,6 +53,17 @@ const Header: React.FC<HeaderProps> = ({ currentView }) => {
                 />
                 
                 <span>{item.label}</span>
+
+                {item.id === 'trade' && trader && (
+                  <span className={`
+                    ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full
+                    ${remainingPosts > 0 
+                      ? 'bg-amber-400 text-amber-900' 
+                      : 'bg-red-500 text-white'}
+                  `}>
+                    {remainingPosts}/{maxPostsPerDay}
+                  </span>
+                )}
 
                 {currentView === item.id && (
                   <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white rounded-t-sm shadow-[0_-2px_6px_rgba(255,255,255,0.3)]" />

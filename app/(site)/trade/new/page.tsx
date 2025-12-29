@@ -9,10 +9,7 @@ export default function NewTradePage() {
   return (
     <CreateTradePage 
       onBack={() => router.back()}
-      onSubmit={(data) => {
-        console.log('Trade created:', data);
-        router.push('/trade');
-      }}
+      onSuccess={() => router.push('/trade')}
     />
   );
 }

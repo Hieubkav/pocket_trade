@@ -67,51 +67,96 @@ export default function TradePostsPage() {
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trader</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Có (Have)</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cần (Want)</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trạng thái</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hết hạn</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Have / Want</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Requests</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ẩn</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {!tradePosts ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
               ) : tradePosts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">Chưa có bài đăng nào</td>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Chưa có bài đăng nào</td>
                 </tr>
               ) : tradePosts.map((post) => {
                 const status = statusConfig[post.status] || statusConfig.active;
+                const maxDisplay = 5;
+                const haveExtra = post.haveCardsCount - maxDisplay;
+                const wantExtra = post.wantCardsCount - maxDisplay;
+                
                 return (
                   <tr key={post._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-4 py-4">
-                      <p className="font-medium text-slate-900 dark:text-white">{post.traderName}</p>
+                      <div className="flex items-center gap-2">
+                        {post.traderAvatar ? (
+                          <img src={post.traderAvatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-500">
+                            {post.traderName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <p className="font-medium text-slate-900 dark:text-white">{post.traderName}</p>
+                          <p className="text-xs text-slate-400">{post.requestsCount} requests</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        {post.haveCards.slice(0, maxDisplay).map((card) => (
+                          <img 
+                            key={card._id} 
+                            src={card.imageUrl} 
+                            alt={card.name}
+                            title={card.name}
+                            className="w-10 h-14 object-cover rounded border border-green-300 dark:border-green-600"
+                          />
+                        ))}
+                        {haveExtra > 0 && (
+                          <div className="w-10 h-14 rounded border border-green-300 dark:border-green-600 bg-green-50 dark:bg-green-900/30 flex items-center justify-center text-xs font-bold text-green-600 dark:text-green-400">
+                            +{haveExtra}
+                          </div>
+                        )}
+                        {post.haveCardsCount === 0 && (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        {post.wantCards.slice(0, maxDisplay).map((card) => (
+                          <img 
+                            key={card._id} 
+                            src={card.imageUrl} 
+                            alt={card.name}
+                            title={card.name}
+                            className="w-10 h-14 object-cover rounded border border-blue-300 dark:border-blue-600"
+                          />
+                        ))}
+                        {wantExtra > 0 && (
+                          <div className="w-10 h-14 rounded border border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400">
+                            +{wantExtra}
+                          </div>
+                        )}
+                        {post.wantCardsCount === 0 && (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${status.color}`}>
                         {status.label}
                       </span>
-                    </td>
-                    <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{formatDate(post.expiresAt)}</td>
-                    <td className="px-4 py-4">
-                      <span className="text-slate-600 dark:text-slate-400">
-                        <span className="text-green-600 dark:text-green-400">{post.haveCards}</span>
-                        {' / '}
-                        <span className="text-blue-600 dark:text-blue-400">{post.wantCards}</span>
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{post.requestsCount}</td>
-                    <td className="px-4 py-4">
-                      {post.isHidden ? (
-                        <span className="text-amber-600 dark:text-amber-400">Ẩn</span>
-                      ) : (
-                        <span className="text-slate-400">-</span>
+                      {post.isHidden && (
+                        <span className="ml-1 text-xs text-amber-500">(Ẩn)</span>
                       )}
                     </td>
+                    <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{formatDate(post.expiresAt)}</td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-end gap-1">
                         <Link 

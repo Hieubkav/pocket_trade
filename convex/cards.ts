@@ -25,14 +25,23 @@ export const list = query({
   },
 });
 
+// Rarity order for sorting
+const RARITY_ORDER: Record<string, number> = {
+  '◆': 1, '◆◆': 2, '◆◆◆': 3, '◆◆◆◆': 4,
+  '☆': 5, '☆☆': 6, '☆☆☆': 7,
+  '♢': 8, 'Shiny Rare': 9, 'Shiny Super Rare': 10, 'Crown Rare': 11,
+};
+
 export const listPaginated = query({
   args: { 
     limit: v.number(),
+    page: v.optional(v.number()),
     cursor: v.optional(v.string()),
     search: v.optional(v.string()),
     category: v.optional(v.string()),
     collection: v.optional(v.string()),
     cardType: v.optional(v.string()),
+    rarity: v.optional(v.string()),
     sortBy: v.optional(v.string()),
     sortDir: v.optional(v.string()),
   },
@@ -51,6 +60,7 @@ export const listPaginated = query({
         ...card,
         rarityName: rarity?.name || "",
         rarityImageUrl: rarity?.imageUrl || "",
+        rarityOrder: RARITY_ORDER[rarity?.name || ""] || 0,
         packName: pack?.name || "",
         setName: set?.name || "",
         setCode: set?.setCode || "",
@@ -74,7 +84,10 @@ export const listPaginated = query({
       const matchesType = !args.cardType || args.cardType === "All" || 
         card.type === args.cardType;
       
-      return matchesSearch && matchesCategory && matchesCollection && matchesType;
+      const matchesRarity = !args.rarity || args.rarity === "All" ||
+        card.rarityName === args.rarity;
+      
+      return matchesSearch && matchesCategory && matchesCollection && matchesType && matchesRarity;
     });
     
     // Sort
@@ -89,37 +102,44 @@ export const listPaginated = query({
         case "TYPE":
           comparison = a.type.localeCompare(b.type);
           break;
+        case "RARITY":
+          comparison = a.rarityOrder - b.rarityOrder;
+          break;
         case "ID":
         default:
           // Sort theo setCode (giảm - set mới lên trước), rồi số thẻ (tăng)
-          comparison = b.setCode.localeCompare(a.setCode); // DESC cho setCode
+          comparison = b.setCode.localeCompare(a.setCode);
           if (comparison === 0) {
             const numA = parseInt(a.cardNumber) || 0;
             const numB = parseInt(b.cardNumber) || 0;
-            comparison = numA - numB; // ASC cho cardNumber
+            comparison = numA - numB;
           }
           break;
       }
       return sortDir === "ASC" ? comparison : -comparison;
     });
     
-    // Paginate
+    // Paginate - support both cursor and page-based
     let startIndex = 0;
     if (args.cursor) {
       const cursorIndex = filtered.findIndex(c => c._id === args.cursor);
-      if (cursorIndex !== -1) {
-        startIndex = cursorIndex + 1;
-      }
+      if (cursorIndex !== -1) startIndex = cursorIndex + 1;
+    } else if (args.page) {
+      startIndex = (args.page - 1) * args.limit;
     }
     
     const cards = filtered.slice(startIndex, startIndex + args.limit);
+    const totalPages = Math.ceil(filtered.length / args.limit);
+    const currentPage = args.page || Math.floor(startIndex / args.limit) + 1;
     const hasMore = startIndex + args.limit < filtered.length;
     const nextCursor = cards.length > 0 ? cards[cards.length - 1]._id : undefined;
     
-    // Get unique collections for filter dropdown
+    // Get unique values for filter dropdowns
     const collections = [...new Set(enrichedCards.map(c => c.setName || c.packName).filter(Boolean))].sort();
+    const rarityNames = [...new Set(enrichedCards.map(c => c.rarityName).filter(Boolean))];
+    rarityNames.sort((a, b) => (RARITY_ORDER[a] || 0) - (RARITY_ORDER[b] || 0));
     
-    return { items: cards, hasMore, nextCursor, total: filtered.length, collections };
+    return { items: cards, total: filtered.length, totalPages, currentPage, hasMore, nextCursor, collections, rarities: rarityNames };
   },
 });
 
@@ -127,6 +147,27 @@ export const getById = query({
   args: { id: v.id("cards") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.id);
+  },
+});
+
+export const getByIdEnriched = query({
+  args: { id: v.id("cards") },
+  handler: async (ctx, args) => {
+    const card = await ctx.db.get(args.id);
+    if (!card) return null;
+    
+    const rarity = card.rarityId ? await ctx.db.get(card.rarityId) : null;
+    const pack = card.packId ? await ctx.db.get(card.packId) : null;
+    const set = pack?.setId ? await ctx.db.get(pack.setId) : null;
+    
+    return {
+      ...card,
+      rarityName: rarity?.name || "",
+      rarityImageUrl: rarity?.imageUrl || "",
+      packName: pack?.name || "",
+      setName: set?.name || "",
+      setCode: set?.setCode || "",
+    };
   },
 });
 

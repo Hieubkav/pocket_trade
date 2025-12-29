@@ -5,15 +5,16 @@ import { useQuery } from 'convex/react';
 import { api } from '../../../../convex/_generated/api';
 import CardDetail from '../../../components/CardDetail';
 import { PokemonCard, PokemonType } from '../../../types';
+import { Id } from '../../../../convex/_generated/dataModel';
 
 export default function CardDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const cardId = params.id as string;
+  const cardId = params.id as Id<"cards">;
   
-  const cardsData = useQuery(api.cards.list);
+  const cardData = useQuery(api.cards.getByIdEnriched, { id: cardId });
   
-  if (cardsData === undefined) {
+  if (cardData === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="animate-spin w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full" />
@@ -21,8 +22,6 @@ export default function CardDetailPage() {
     );
   }
 
-  const cardData = cardsData.find(c => c._id === cardId);
-  
   if (!cardData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -51,13 +50,11 @@ export default function CardDetailPage() {
     category: cardData.supertype === 'pokemon' ? 'Pokemon' : 'Trainer',
     cardNumber: cardData.cardNumber,
   };
-
-  const collections = Array.from(new Set(cardsData.map(c => c.setName || c.packName).filter(Boolean)));
   
   return (
     <CardDetail 
       card={card}
-      collections={collections}
+      collections={[]}
       onBack={() => router.back()}
     />
   );

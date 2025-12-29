@@ -22,23 +22,39 @@ export const countTodayPosts = query({
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const tradePosts = await ctx.db.query("tradePosts").collect();
+    const tradePosts = await ctx.db.query("tradePosts").order("desc").collect();
     const traders = await ctx.db.query("traders").collect();
     const tradePostCards = await ctx.db.query("tradePostCards").collect();
     const tradeRequests = await ctx.db.query("tradeRequests").collect();
+    const cards = await ctx.db.query("cards").collect();
     
     return tradePosts.map(post => {
       const trader = traders.find(t => t._id === post.traderId);
       const postCards = tradePostCards.filter(c => c.tradePostId === post._id);
-      const haveCards = postCards.filter(c => c.type === "have").length;
-      const wantCards = postCards.filter(c => c.type === "want").length;
+      
+      const haveCardIds = postCards.filter(c => c.type === "have").map(c => c.cardId);
+      const wantCardIds = postCards.filter(c => c.type === "want").map(c => c.cardId);
+      
+      const haveCardsData = haveCardIds
+        .map(id => cards.find(c => c._id === id))
+        .filter(Boolean)
+        .map(c => ({ _id: c!._id, name: c!.name, imageUrl: c!.imageUrl }));
+      
+      const wantCardsData = wantCardIds
+        .map(id => cards.find(c => c._id === id))
+        .filter(Boolean)
+        .map(c => ({ _id: c!._id, name: c!.name, imageUrl: c!.imageUrl }));
+      
       const requestsCount = tradeRequests.filter(r => r.tradePostId === post._id).length;
       
       return {
         ...post,
         traderName: trader?.name || "",
-        haveCards,
-        wantCards,
+        traderAvatar: trader?.avatarUrl || "",
+        haveCardsCount: haveCardIds.length,
+        wantCardsCount: wantCardIds.length,
+        haveCards: haveCardsData,
+        wantCards: wantCardsData,
         requestsCount,
       };
     });
@@ -63,11 +79,11 @@ export const getById = query({
     const haveCards = tradePostCards
       .filter(c => c.type === "have")
       .map(c => cards.find(card => card._id === c.cardId))
-      .filter(Boolean);
+      .filter((c): c is NonNullable<typeof c> => c !== undefined);
     const wantCards = tradePostCards
       .filter(c => c.type === "want")
       .map(c => cards.find(card => card._id === c.cardId))
-      .filter(Boolean);
+      .filter((c): c is NonNullable<typeof c> => c !== undefined);
     
     return {
       ...post,
@@ -113,5 +129,65 @@ export const bulkRemove = mutation({
       await ctx.db.delete(id);
     }
     return { deleted: args.ids.length };
+  },
+});
+
+export const create = mutation({
+  args: {
+    traderId: v.id("traders"),
+    haveCardIds: v.array(v.id("cards")),
+    wantCardIds: v.array(v.id("cards")),
+    durationHours: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Get settings for default duration
+    const settings = await ctx.db.query("settings").first();
+    const durationHours = args.durationHours ?? settings?.tradePostDurationHours ?? 48;
+    
+    // Check daily limit
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 1, 0, 0).getTime();
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 0, 0).getTime();
+    
+    const todayPosts = await ctx.db
+      .query("tradePosts")
+      .withIndex("by_trader", q => q.eq("traderId", args.traderId))
+      .collect();
+    
+    const todayCount = todayPosts.filter(p => p._creationTime >= startOfDay && p._creationTime <= endOfDay).length;
+    const maxPosts = settings?.limitTradePostPerTrader ?? 5;
+    
+    if (todayCount >= maxPosts) {
+      throw new Error(`Bạn đã đạt giới hạn ${maxPosts} bài đăng/ngày`);
+    }
+    
+    // Create trade post
+    const expiresAt = Date.now() + durationHours * 60 * 60 * 1000;
+    const postId = await ctx.db.insert("tradePosts", {
+      traderId: args.traderId,
+      status: "active",
+      expiresAt,
+      isHidden: false,
+    });
+    
+    // Create tradePostCards for have cards
+    for (const cardId of args.haveCardIds) {
+      await ctx.db.insert("tradePostCards", {
+        tradePostId: postId,
+        cardId,
+        type: "have",
+      });
+    }
+    
+    // Create tradePostCards for want cards
+    for (const cardId of args.wantCardIds) {
+      await ctx.db.insert("tradePostCards", {
+        tradePostId: postId,
+        cardId,
+        type: "want",
+      });
+    }
+    
+    return postId;
   },
 });
