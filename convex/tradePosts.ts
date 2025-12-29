@@ -71,6 +71,7 @@ export const listPaginated = query({
     onlineOnly: v.optional(v.boolean()),
     rarity: v.optional(v.string()),
     setName: v.optional(v.string()),
+    cardName: v.optional(v.string()),
     sortBy: v.optional(v.string()),
     sortDir: v.optional(v.string()),
   },
@@ -130,6 +131,13 @@ export const listPaginated = query({
       if (args.onlineOnly && !post.traderIsOnline) return false;
       if (args.rarity && !post._allRarities.includes(args.rarity)) return false;
       if (args.setName && !post._allSets.includes(args.setName)) return false;
+      if (args.cardName) {
+        const searchTerm = args.cardName.toLowerCase();
+        const hasMatch = [...post.haveCards, ...post.wantCards].some(c => 
+          c.name.toLowerCase().includes(searchTerm)
+        );
+        if (!hasMatch) return false;
+      }
       return true;
     });
 

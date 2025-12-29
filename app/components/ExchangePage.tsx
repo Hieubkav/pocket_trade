@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { Plus, Clock, ArrowRightLeft, Loader2, Filter, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Clock, ArrowRightLeft, Loader2, Filter, ChevronDown, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
 
 type TabType = 'public-offers' | 'my-offers' | 'history';
@@ -64,10 +64,21 @@ const ExchangePage: React.FC = () => {
   const [onlineOnly, setOnlineOnly] = useState(false);
   const [selectedRarity, setSelectedRarity] = useState('');
   const [selectedSet, setSelectedSet] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sortBy, setSortBy] = useState('EXPIRES');
   const [sortDir, setSortDir] = useState<'ASC' | 'DESC'>('ASC');
   const [currentPage, setCurrentPage] = useState(1);
   const [expiredIds, setExpiredIds] = useState<Set<string>>(new Set());
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Reset page when filters change
   const handleFilterChange = () => setCurrentPage(1);
@@ -82,6 +93,7 @@ const ExchangePage: React.FC = () => {
       onlineOnly: onlineOnly || undefined,
       rarity: selectedRarity || undefined,
       setName: selectedSet || undefined,
+      cardName: debouncedSearch || undefined,
     };
 
     if (activeTab === 'public-offers') {
@@ -181,7 +193,27 @@ const ExchangePage: React.FC = () => {
 
       {/* Filters - Only show for public-offers */}
       {activeTab === 'public-offers' && (
-        <div className="bg-white border-b border-slate-200 px-3 py-2">
+        <div className="bg-white border-b border-slate-200 px-3 py-2 space-y-2">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Tìm theo tên thẻ bài..."
+              className="w-full h-9 pl-9 pr-8 text-sm bg-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-full"
+              >
+                <X className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+            )}
+          </div>
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
