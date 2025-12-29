@@ -1,6 +1,24 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
+// Đếm số bài đăng trong ngày của trader
+export const countTodayPosts = query({
+  args: { traderId: v.id("traders") },
+  handler: async (ctx, args) => {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 1, 0, 0).getTime();
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 0, 0).getTime();
+    
+    const posts = await ctx.db
+      .query("tradePosts")
+      .withIndex("by_trader", q => q.eq("traderId", args.traderId))
+      .collect();
+    
+    const todayPosts = posts.filter(p => p._creationTime >= startOfDay && p._creationTime <= endOfDay);
+    return todayPosts.length;
+  },
+});
+
 export const list = query({
   args: {},
   handler: async (ctx) => {

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { toast } from 'sonner';
 import { Plus, Search, Pencil, Trash2, ShieldCheck, Crown, Loader2 } from 'lucide-react';
 import { useAdminSession } from '../hooks/useAdminSession';
 
@@ -33,7 +34,7 @@ export default function AdminsPage() {
         currentAdminId: currentAdmin.id as Id<'admins'> 
       });
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Lỗi khi xóa admin');
+      toast.error(error instanceof Error ? error.message : 'Lỗi khi xóa admin');
     } finally {
       setDeleting(null);
     }
