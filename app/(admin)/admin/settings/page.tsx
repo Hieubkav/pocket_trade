@@ -23,6 +23,7 @@ export default function SettingsPage() {
     limitTradePostPerTrader: 5,
     limitCardPerPost: 10,
     tradePostDurationHours: 48,
+    limitRequestPerTraderPerDay: 20,
   });
   const [isSaving, setIsSaving] = useState(false);
   const [keywordInput, setKeywordInput] = useState('');
@@ -41,6 +42,7 @@ export default function SettingsPage() {
         limitTradePostPerTrader: settings.limitTradePostPerTrader,
         limitCardPerPost: settings.limitCardPerPost,
         tradePostDurationHours: settings.tradePostDurationHours,
+        limitRequestPerTraderPerDay: settings.limitRequestPerTraderPerDay ?? 20,
       });
     }
   }, [settings]);
@@ -84,6 +86,7 @@ export default function SettingsPage() {
         limitTradePostPerTrader: form.limitTradePostPerTrader,
         limitCardPerPost: form.limitCardPerPost,
         tradePostDurationHours: form.tradePostDurationHours,
+        limitRequestPerTraderPerDay: form.limitRequestPerTraderPerDay || undefined,
       });
       toast.success('Đã lưu cài đặt');
     } catch {
@@ -314,6 +317,18 @@ export default function SettingsPage() {
                 className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
               />
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Bài đăng sẽ tự động hết hạn sau số giờ này</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Số request tối đa / trader / ngày
+              </label>
+              <input
+                type="number"
+                value={form.limitRequestPerTraderPerDay}
+                onChange={(e) => setForm({ ...form, limitRequestPerTraderPerDay: Number(e.target.value) || 20 })}
+                className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+              />
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Giới hạn số request trade mỗi trader có thể gửi trong ngày (mặc định: 20)</p>
             </div>
           </div>
         </div>

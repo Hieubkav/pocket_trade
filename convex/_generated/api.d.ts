@@ -23,6 +23,7 @@ import type * as series from "../series.js";
 import type * as sets from "../sets.js";
 import type * as settings from "../settings.js";
 import type * as tradePosts from "../tradePosts.js";
+import type * as tradeRequests from "../tradeRequests.js";
 import type * as traders from "../traders.js";
 import type * as visitors from "../visitors.js";
 
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   sets: typeof sets;
   settings: typeof settings;
   tradePosts: typeof tradePosts;
+  tradeRequests: typeof tradeRequests;
   traders: typeof traders;
   visitors: typeof visitors;
 }>;

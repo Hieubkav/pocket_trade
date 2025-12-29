@@ -51,6 +51,7 @@ export const list = query({
         ...post,
         traderName: trader?.name || "",
         traderAvatar: trader?.avatarUrl || "",
+        traderIsOnline: trader?.isOnline || false,
         haveCardsCount: haveCardIds.length,
         wantCardsCount: wantCardIds.length,
         haveCards: haveCardsData,
@@ -58,6 +59,118 @@ export const list = query({
         requestsCount,
       };
     });
+  },
+});
+
+export const listPaginated = query({
+  args: {
+    limit: v.number(),
+    page: v.optional(v.number()),
+    status: v.optional(v.string()),
+    traderId: v.optional(v.id("traders")),
+    onlineOnly: v.optional(v.boolean()),
+    rarity: v.optional(v.string()),
+    setName: v.optional(v.string()),
+    sortBy: v.optional(v.string()),
+    sortDir: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const tradePosts = await ctx.db.query("tradePosts").collect();
+    const traders = await ctx.db.query("traders").collect();
+    const tradePostCards = await ctx.db.query("tradePostCards").collect();
+    const cards = await ctx.db.query("cards").collect();
+    const rarities = await ctx.db.query("rarities").collect();
+    const packs = await ctx.db.query("packs").collect();
+    const sets = await ctx.db.query("sets").collect();
+
+    // Enrich cards with rarity and set info
+    const enrichedCards = cards.map(card => {
+      const rarity = rarities.find(r => r._id === card.rarityId);
+      const pack = packs.find(p => p._id === card.packId);
+      const set = pack ? sets.find(s => s._id === pack.setId) : undefined;
+      return { ...card, rarityName: rarity?.name || "", setName: set?.name || "" };
+    });
+
+    // Build enriched posts
+    const enrichedPosts = tradePosts.map(post => {
+      const trader = traders.find(t => t._id === post.traderId);
+      const postCards = tradePostCards.filter(c => c.tradePostId === post._id);
+      
+      const haveCardIds = postCards.filter(c => c.type === "have").map(c => c.cardId);
+      const wantCardIds = postCards.filter(c => c.type === "want").map(c => c.cardId);
+      
+      const haveCardsData = haveCardIds
+        .map(id => enrichedCards.find(c => c._id === id))
+        .filter(Boolean);
+      
+      const wantCardsData = wantCardIds
+        .map(id => enrichedCards.find(c => c._id === id))
+        .filter(Boolean);
+      
+      return {
+        ...post,
+        traderName: trader?.name || "",
+        traderAvatar: trader?.avatarUrl || "",
+        traderIsOnline: trader?.isOnline || false,
+        haveCardsCount: haveCardIds.length,
+        wantCardsCount: wantCardIds.length,
+        haveCards: haveCardsData.map(c => ({ _id: c!._id, name: c!.name, imageUrl: c!.imageUrl, rarityName: c!.rarityName, setName: c!.setName })),
+        wantCards: wantCardsData.map(c => ({ _id: c!._id, name: c!.name, imageUrl: c!.imageUrl, rarityName: c!.rarityName, setName: c!.setName })),
+        // For filtering
+        _allRarities: [...new Set([...haveCardsData, ...wantCardsData].map(c => c?.rarityName).filter(Boolean))],
+        _allSets: [...new Set([...haveCardsData, ...wantCardsData].map(c => c?.setName).filter(Boolean))],
+      };
+    });
+
+    // Filter
+    let filtered = enrichedPosts.filter(post => {
+      if (args.status && post.status !== args.status) return false;
+      if (args.status === 'active' && post.isHidden) return false;
+      if (args.traderId && post.traderId !== args.traderId) return false;
+      if (args.onlineOnly && !post.traderIsOnline) return false;
+      if (args.rarity && !post._allRarities.includes(args.rarity)) return false;
+      if (args.setName && !post._allSets.includes(args.setName)) return false;
+      return true;
+    });
+
+    // Sort
+    const sortBy = args.sortBy || "EXPIRES";
+    const sortDir = args.sortDir || "ASC";
+    filtered.sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case "CREATED":
+          comparison = a._creationTime - b._creationTime;
+          break;
+        case "EXPIRES":
+        default:
+          comparison = a.expiresAt - b.expiresAt;
+          break;
+      }
+      return sortDir === "ASC" ? comparison : -comparison;
+    });
+
+    // Pagination
+    const currentPage = args.page || 1;
+    const startIndex = (currentPage - 1) * args.limit;
+    const items = filtered.slice(startIndex, startIndex + args.limit);
+    const totalPages = Math.ceil(filtered.length / args.limit);
+
+    // Get unique values for filters
+    const allRarities = [...new Set(enrichedPosts.flatMap(p => p._allRarities))].sort();
+    const allSets = [...new Set(enrichedPosts.flatMap(p => p._allSets))].sort();
+
+    // Clean up internal fields
+    const cleanItems = items.map(({ _allRarities, _allSets, ...rest }) => rest);
+
+    return { 
+      items: cleanItems, 
+      total: filtered.length, 
+      totalPages, 
+      currentPage,
+      rarities: allRarities,
+      sets: allSets,
+    };
   },
 });
 

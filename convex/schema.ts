@@ -84,6 +84,8 @@ export default defineSchema({
   tradeRequests: defineTable({
     tradePostId: v.id("tradePosts"),
     requesterId: v.id("traders"),
+    offeredCardId: v.id("cards"), // Lá bài requester đưa (từ wantCards của post)
+    requestedCardId: v.id("cards"), // Lá bài requester muốn nhận (từ haveCards của post)
     message: v.optional(v.string()),
     status: v.string(), // pending, accepted, declined
   })
@@ -142,6 +144,7 @@ export default defineSchema({
     limitTradePostPerTrader: v.number(), // default 5
     limitCardPerPost: v.number(), // default 10
     tradePostDurationHours: v.number(), // default 48
+    limitRequestPerTraderPerDay: v.optional(v.number()), // default 20
   }),
 
   // 15. Event

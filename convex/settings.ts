@@ -22,6 +22,7 @@ export const upsert = mutation({
     limitTradePostPerTrader: v.number(),
     limitCardPerPost: v.number(),
     tradePostDurationHours: v.number(),
+    limitRequestPerTraderPerDay: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db.query("settings").first();
