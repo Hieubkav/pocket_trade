@@ -23,6 +23,7 @@ export interface PokemonCard {
   subName: string;
   collection: string;
   category: CardCategory;
+  cardNumber?: string;
 }
 
 export type SortOption = 'ID' | 'NAME' | 'TYPE';

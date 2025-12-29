@@ -2,11 +2,69 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pencil, Copy, Hexagon, RefreshCcw, Plus, Star } from 'lucide-react';
+import Link from 'next/link';
+import { Pencil, Copy, Hexagon, RefreshCcw, Plus, Star, LogIn, LogOut, UserPlus } from 'lucide-react';
+import { useTraderAuth } from '../contexts/TraderAuthContext';
 
 const ProfilePage: React.FC = () => {
   const router = useRouter();
+  const { trader, logout, isLoading } = useTraderAuth();
   const [subTab, setSubTab] = useState<'offering' | 'seeking'>('offering');
+
+  const getRankTitle = (points: number) => {
+    if (points >= 5000) return 'Legend Trader';
+    if (points >= 2000) return 'Master Trader';
+    if (points >= 1000) return 'Expert Trader';
+    if (points >= 500) return 'Advanced Trader';
+    if (points >= 100) return 'Beginner Trader';
+    return 'Newbie';
+  };
+
+  const copyFriendCode = () => {
+    if (trader?.friendCode) {
+      navigator.clipboard.writeText(trader.friendCode);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a1128]">
+        <div className="animate-spin w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  if (!trader) {
+    return (
+      <div className="min-h-screen bg-[#0a1128] flex items-center justify-center px-6 pb-20">
+        <div className="text-center space-y-6">
+          <div className="w-24 h-24 mx-auto bg-teal-500/20 rounded-full flex items-center justify-center">
+            <LogIn className="w-12 h-12 text-teal-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-white mb-2">Chao mung den Pocket Trade!</h2>
+            <p className="text-white/60 text-sm">Dang nhap de quan ly tai khoan va giao dich the</p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Link
+              href="/login"
+              className="flex items-center justify-center gap-2 bg-teal-500 text-white px-8 py-4 rounded-2xl font-bold hover:bg-teal-600 transition-colors"
+            >
+              <LogIn size={20} />
+              Dang nhap
+            </Link>
+            <Link
+              href="/register"
+              className="flex items-center justify-center gap-2 bg-white/10 text-white px-8 py-4 rounded-2xl font-bold hover:bg-white/20 transition-colors"
+            >
+              <UserPlus size={20} />
+              Dang ky tai khoan
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a1128] pb-20">
@@ -16,7 +74,7 @@ const ProfilePage: React.FC = () => {
             <div className="w-24 h-24 rounded-full border-4 border-teal-500/30 p-1 bg-gradient-to-tr from-teal-500/20 to-transparent">
               <div className="w-full h-full rounded-full overflow-hidden bg-slate-800 border border-white/10 flex items-center justify-center">
                 <img 
-                    src="https://api.dicebear.com/7.x/pixel-art/svg?seed=Dati" 
+                    src={trader.avatarUrl || `https://api.dicebear.com/7.x/pixel-art/svg?seed=${trader.name}`}
                     alt="avatar" 
                     className="w-full h-full object-cover scale-110" 
                 />
@@ -29,34 +87,45 @@ const ProfilePage: React.FC = () => {
 
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-black text-white tracking-tight">Dati</h2>
-              <Pencil className="w-4 h-4 text-white/40 cursor-pointer" />
+              <h2 className="text-xl font-black text-white tracking-tight">{trader.name}</h2>
               <Hexagon className="w-4 h-4 text-teal-400 fill-teal-400/10" />
             </div>
             
             <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2 text-white/60 text-[11px] font-bold">
-                    <span>Friend ID: 2425025484977385</span>
-                    <Pencil className="w-3 h-3 cursor-pointer hover:text-white transition-colors" />
-                    <Copy className="w-3 h-3 cursor-pointer hover:text-white transition-colors" />
-                </div>
+                {trader.friendCode && (
+                  <div className="flex items-center gap-2 text-white/60 text-[11px] font-bold">
+                      <span>Friend ID: {trader.friendCode}</span>
+                      <Copy 
+                        className="w-3 h-3 cursor-pointer hover:text-white transition-colors" 
+                        onClick={copyFriendCode}
+                      />
+                  </div>
+                )}
                 
                 <div className="flex items-center gap-6">
                     <div className="flex flex-col">
-                        <span className="text-[9px] text-white/40 font-black uppercase tracking-wider mb-0.5">Uy tín</span>
-                        <span className="text-xs text-white font-black tracking-tight">2,450 PTS</span>
+                        <span className="text-[9px] text-white/40 font-black uppercase tracking-wider mb-0.5">Uy tin</span>
+                        <span className="text-xs text-white font-black tracking-tight">{trader.legitPoint.toLocaleString()} PTS</span>
                     </div>
                     
                     <div className="w-[1px] h-6 bg-white/10"></div>
                     
                     <div className="flex flex-col">
-                        <span className="text-[9px] text-amber-500/60 font-black uppercase tracking-wider mb-0.5">Hạng</span>
-                        <span className="text-xs text-amber-500 font-black tracking-tight uppercase">Master Trader</span>
+                        <span className="text-[9px] text-amber-500/60 font-black uppercase tracking-wider mb-0.5">Hang</span>
+                        <span className="text-xs text-amber-500 font-black tracking-tight uppercase">{getRankTitle(trader.legitPoint)}</span>
                     </div>
                 </div>
             </div>
           </div>
         </div>
+        
+        <button
+          onClick={logout}
+          className="flex items-center gap-2 text-white/50 text-sm hover:text-white transition-colors"
+        >
+          <LogOut size={16} />
+          Dang xuat
+        </button>
       </div>
 
       <div className="bg-white rounded-t-[2.5rem] min-h-[calc(100vh-280px)]">

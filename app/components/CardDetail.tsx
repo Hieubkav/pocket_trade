@@ -3,20 +3,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, Info, Search, ListFilter, RotateCcw, ChevronRight, Check } from 'lucide-react';
 import { PokemonCard } from '../types';
-import { POKEMON_CARDS } from '../data';
 
 interface CardDetailProps {
   card: PokemonCard;
+  collections?: string[];
   onBack: () => void;
 }
 
-const CardDetail: React.FC<CardDetailProps> = ({ card, onBack }) => {
+const CardDetail: React.FC<CardDetailProps> = ({ card, collections = [], onBack }) => {
   const [activeTab, setActiveTab] = useState<'offering' | 'seeking'>('offering');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [selectedSet, setSelectedSet] = useState<string>('Tất cả');
+  const [selectedSet, setSelectedSet] = useState<string>('Tat ca');
   const filterRef = useRef<HTMLDivElement>(null);
-
-  const collections = Array.from(new Set(POKEMON_CARDS.map(c => c.collection))).sort();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -105,20 +103,20 @@ const CardDetail: React.FC<CardDetailProps> = ({ card, onBack }) => {
               className={`flex items-center gap-1.5 border px-4 h-full rounded-xl font-bold text-xs uppercase tracking-tighter transition-all ${isFilterOpen ? 'bg-teal-50 border-teal-500 text-teal-600' : 'border-slate-100 text-slate-500 bg-white'}`}
             >
               <ListFilter className="w-4 h-4" />
-              {selectedSet === 'Tất cả' ? 'Bộ lọc' : selectedSet}
+              {selectedSet === 'Tat ca' ? 'Bo loc' : selectedSet}
             </button>
 
             {isFilterOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 rounded-2xl shadow-xl z-[60] py-2 animate-in fade-in zoom-in-95 duration-150">
                 <div className="px-4 py-2 border-b border-slate-50 mb-1">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chọn Pack / Set</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chon Pack / Set</span>
                 </div>
                 <button 
-                  onClick={() => { setSelectedSet('Tất cả'); setIsFilterOpen(false); }}
-                  className={`w-full text-left px-4 py-2.5 text-xs font-bold flex items-center justify-between hover:bg-slate-50 transition-colors ${selectedSet === 'Tất cả' ? 'text-teal-600 bg-teal-50/50' : 'text-slate-700'}`}
+                  onClick={() => { setSelectedSet('Tat ca'); setIsFilterOpen(false); }}
+                  className={`w-full text-left px-4 py-2.5 text-xs font-bold flex items-center justify-between hover:bg-slate-50 transition-colors ${selectedSet === 'Tat ca' ? 'text-teal-600 bg-teal-50/50' : 'text-slate-700'}`}
                 >
-                  TẤT CẢ PACKS
-                  {selectedSet === 'Tất cả' && <Check className="w-3.5 h-3.5" />}
+                  TAT CA PACKS
+                  {selectedSet === 'Tat ca' && <Check className="w-3.5 h-3.5" />}
                 </button>
                 {collections.map(coll => (
                   <button 

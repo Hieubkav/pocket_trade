@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "../globals.css";
 import NavigationWrapper from "../components/NavigationWrapper";
 import { ConvexClientProvider } from "../ConvexClientProvider";
+import { TraderAuthProvider } from "../contexts/TraderAuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,7 +31,9 @@ export default function SiteLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ConvexClientProvider>
-          <NavigationWrapper>{children}</NavigationWrapper>
+          <TraderAuthProvider>
+            <NavigationWrapper>{children}</NavigationWrapper>
+          </TraderAuthProvider>
         </ConvexClientProvider>
       </body>
     </html>

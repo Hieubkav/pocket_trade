@@ -184,4 +184,14 @@ export default defineSchema({
     .index("by_storage_id", ["storageId"])
     .index("by_used_by", ["usedBy"])
     .index("by_url", ["url"]),
+
+  // 19. OTP Codes (for password reset)
+  otpCodes: defineTable({
+    email: v.string(),
+    code: v.string(),
+    expiresAt: v.number(),
+    used: v.boolean(),
+  })
+    .index("by_email", ["email"])
+    .index("by_code", ["code"]),
 });

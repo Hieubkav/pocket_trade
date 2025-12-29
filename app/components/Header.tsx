@@ -2,13 +2,16 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { LayoutGrid, MessageSquare, User, ArrowLeftRight } from 'lucide-react';
+import { LayoutGrid, MessageSquare, User, ArrowLeftRight, LogIn, LogOut } from 'lucide-react';
+import { useTraderAuth } from '../contexts/TraderAuthContext';
 
 interface HeaderProps {
   currentView: 'library' | 'trade' | 'chat' | 'profile';
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView }) => {
+  const { trader, logout, isLoading } = useTraderAuth();
+
   const navItems = [
     { id: 'library', label: 'THƯ VIỆN', icon: LayoutGrid, href: '/' },
     { id: 'trade', label: 'GIAO DỊCH', icon: ArrowLeftRight, href: '/trade' },
@@ -19,7 +22,9 @@ const Header: React.FC<HeaderProps> = ({ currentView }) => {
   return (
     <header className="hidden md:block sticky top-0 z-50 bg-teal-600 border-b border-teal-500 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-center items-center h-16">
+        <div className="flex justify-between items-center h-16">
+          <div className="w-40" />
+          
           <nav className="flex items-center gap-4 h-full">
             {navItems.map((item) => (
               <Link
@@ -45,6 +50,33 @@ const Header: React.FC<HeaderProps> = ({ currentView }) => {
               </Link>
             ))}
           </nav>
+
+          <div className="w-40 flex justify-end">
+            {!isLoading && (
+              trader ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-white text-sm font-medium truncate max-w-24">
+                    {trader.name}
+                  </span>
+                  <button
+                    onClick={logout}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    <LogOut size={14} />
+                    Thoát
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-white text-teal-600 rounded-lg text-xs font-bold hover:bg-teal-50 transition-colors"
+                >
+                  <LogIn size={14} />
+                  Đăng nhập
+                </Link>
+              )
+            )}
+          </div>
         </div>
       </div>
     </header>

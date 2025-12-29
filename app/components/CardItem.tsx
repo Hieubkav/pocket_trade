@@ -48,9 +48,11 @@ const CardItem: React.FC<CardItemProps> = ({ card, onClick }) => {
                     (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${card.id}/300/400`;
                 }}
             />
-            <div className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[8px] font-bold text-white tracking-tighter">
-              #{card.id}
-            </div>
+            {card.cardNumber && (
+              <div className="absolute bottom-1 left-1 bg-black/70 px-1.5 py-0.5 rounded text-[8px] font-bold text-white tracking-tighter">
+                {card.cardNumber}
+              </div>
+            )}
         </div>
       </div>
 
