@@ -86,7 +86,7 @@ export default function RegisterPage() {
   }, [name, debouncedName, nameExists]);
 
   const friendCodeValidation = useMemo(() => {
-    if (!friendCode.trim()) return { error: undefined, isValid: true }; // Optional field
+    if (!friendCode.trim()) return { error: 'Vui lòng nhập Friend Code', isValid: false };
     const cleaned = friendCode.replace(/[^0-9]/g, '');
     if (cleaned.length < 16) return { error: 'Friend Code phải có 16 số (VD: 1234-5678-9012-3456)', isValid: false };
     if (cleaned.length > 16) return { error: 'Friend Code chỉ có 16 số', isValid: false };
@@ -143,7 +143,7 @@ export default function RegisterPage() {
         email: email.trim(), 
         password, 
         avatarUrl,
-        friendCode: friendCode.trim() || undefined,
+        friendCode: friendCode.trim(),
       });
       setTrader(trader);
       router.push('/');
@@ -210,7 +210,7 @@ export default function RegisterPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Friend Code (Mã kết bạn)
+                Friend Code (Mã kết bạn) <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -222,6 +222,7 @@ export default function RegisterPage() {
                     friendCodeValidation.error ? 'border-red-300' : friendCodeValidation.isValid && friendCode ? 'border-green-300' : 'border-slate-200'
                   }`}
                   placeholder="1234-5678-9012-3456"
+                  required
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   {friendCode && <FieldStatus isLoading={friendCodeValidation.isLoading} isValid={friendCodeValidation.isValid} error={friendCodeValidation.error} />}

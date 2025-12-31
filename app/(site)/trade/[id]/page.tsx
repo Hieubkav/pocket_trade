@@ -128,7 +128,7 @@ export default function TradeDetailPage() {
           <div>
             <p className="font-bold text-slate-900">{tradePost.trader?.name}</p>
             <p className="text-xs text-slate-400">
-              {tradePost.trader?.legitPoint ?? 0} điểm uy tín
+              {tradePost.trader?.tradePoint ?? 0} điểm uy tín
               {tradePost.trader?.friendCode && ` • ${tradePost.trader.friendCode}`}
             </p>
           </div>

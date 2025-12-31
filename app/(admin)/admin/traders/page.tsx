@@ -3,17 +3,17 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Plus, Search, Pencil, Trash2, Ban, CheckCircle, Info } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Ban, CheckCircle, Info, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { isTraderOnline } from '@/app/contexts/TraderAuthContext';
 
-const getRank = (legitPoint: number) => {
-  if (legitPoint > 1000) return { name: 'Kim Cương', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400' };
-  if (legitPoint > 500) return { name: 'Vàng', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' };
-  if (legitPoint > 200) return { name: 'Bạc', color: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300' };
-  if (legitPoint >= 100) return { name: 'Đồng', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' };
+const getRank = (tradePoint: number) => {
+  if (tradePoint > 1000) return { name: 'Kim Cương', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400' };
+  if (tradePoint > 500) return { name: 'Vàng', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' };
+  if (tradePoint > 200) return { name: 'Bạc', color: 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300' };
+  if (tradePoint >= 100) return { name: 'Đồng', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' };
   return { name: 'Sắt', color: 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-400' };
 };
 
@@ -23,6 +23,7 @@ export default function TradersPage() {
   const deleteTrader = useMutation(api.traders.adminDelete);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [onlineFilter, setOnlineFilter] = useState<string>('');
+  const [tradePointSort, setTradePointSort] = useState<'asc' | 'desc' | null>(null);
 
   const handleToggleBan = async (id: Id<"traders">, currentStatus: string | undefined) => {
     const newStatus = currentStatus === 'banned' ? 'active' : 'banned';
@@ -47,6 +48,19 @@ export default function TradersPage() {
     if (onlineFilter === 'offline' && online) return false;
     return true;
   });
+
+  const sortedTraders = filteredTraders ? [...filteredTraders].sort((a, b) => {
+    if (!tradePointSort) return 0;
+    const aPoint = a.tradePoint ?? 0;
+    const bPoint = b.tradePoint ?? 0;
+    return tradePointSort === 'asc' ? aPoint - bPoint : bPoint - aPoint;
+  }) : undefined;
+
+  const handleTradePointSort = () => {
+    if (!tradePointSort) setTradePointSort('desc');
+    else if (tradePointSort === 'desc') setTradePointSort('asc');
+    else setTradePointSort(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -112,7 +126,17 @@ export default function TradersPage() {
               <tr className="bg-slate-50 dark:bg-slate-800/50">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trader</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Friend Code</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Legit Point</th>
+                <th 
+                  className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-200 select-none"
+                  onClick={handleTradePointSort}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Trade Point
+                    {!tradePointSort && <ArrowUpDown size={14} />}
+                    {tradePointSort === 'asc' && <ArrowUp size={14} />}
+                    {tradePointSort === 'desc' && <ArrowDown size={14} />}
+                  </span>
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rank</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trạng thái</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
@@ -123,12 +147,12 @@ export default function TradersPage() {
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
-              ) : filteredTraders.length === 0 ? (
+              ) : sortedTraders!.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Không có trader nào</td>
                 </tr>
-              ) : filteredTraders.map((trader) => {
-                const rank = getRank(trader.legitPoint);
+              ) : sortedTraders!.map((trader) => {
+                const rank = getRank(trader.tradePoint ?? 0);
                 const isBanned = trader.status === 'banned';
                 return (
                   <tr key={trader._id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isBanned ? 'opacity-60' : ''}`}>
@@ -169,7 +193,7 @@ export default function TradersPage() {
                         {trader.friendCode || '-'}
                       </code>
                     </td>
-                    <td className="px-4 py-4 text-slate-600 dark:text-slate-400 font-medium">{trader.legitPoint}</td>
+                    <td className="px-4 py-4 text-slate-600 dark:text-slate-400 font-medium">{trader.tradePoint ?? 0}</td>
                     <td className="px-4 py-4">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${rank.color}`}>
                         {rank.name}
