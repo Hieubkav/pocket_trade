@@ -4,6 +4,7 @@ import "../globals.css";
 import NavigationWrapper from "../components/NavigationWrapper";
 import { ConvexClientProvider } from "../ConvexClientProvider";
 import { TraderAuthProvider } from "../contexts/TraderAuthContext";
+import { getSettings } from "../lib/getSettings";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,10 +16,26 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Pocket Trade - Pokemon TCG",
-  description: "Trade Pokemon TCG cards",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSettings();
+
+  return {
+    title: settings?.seoTitle || settings?.siteName || "Pocket Trade - Pokemon TCG",
+    description: settings?.seoDescription || "Trade Pokemon TCG cards",
+    keywords: settings?.seoKeywords?.join(", ") || "Pokemon TCG, Trade, Cards",
+    icons: {
+      icon: settings?.favicon || "/favicon.ico",
+      shortcut: settings?.favicon || "/favicon.ico",
+      apple: settings?.favicon || "/favicon.ico",
+    },
+    openGraph: {
+      title: settings?.seoTitle || settings?.siteName || "Pocket Trade - Pokemon TCG",
+      description: settings?.seoDescription || "Trade Pokemon TCG cards",
+      siteName: settings?.siteName || "Pocket Trade",
+      images: settings?.logo ? [{ url: settings.logo }] : [],
+    },
+  };
+}
 
 export default function SiteLayout({
   children,

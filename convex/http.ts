@@ -5,6 +5,22 @@ import { Id } from "./_generated/dataModel";
 
 const http = httpRouter();
 
+// HTTP endpoint for getting settings (used for SEO metadata)
+http.route({
+  path: "/settings",
+  method: "GET",
+  handler: httpAction(async (ctx) => {
+    const settings = await ctx.runQuery(api.settings.get);
+    return new Response(JSON.stringify(settings), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=60",
+      },
+    });
+  }),
+});
+
 // HTTP endpoint for setting trader offline (used by sendBeacon)
 http.route({
   path: "/setOffline",
