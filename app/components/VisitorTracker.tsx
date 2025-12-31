@@ -25,13 +25,14 @@ export default function VisitorTracker() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({}),
         });
-        const { ipAddress } = await res.json();
+        const { ipAddress, country } = await res.json();
 
         await trackVisitor({
           ipAddress,
           userAgent: navigator.userAgent,
           pageUrl: window.location.href,
           referrer: document.referrer || undefined,
+          country,
         });
       } catch {
         // Silent fail - don't break the app for tracking
