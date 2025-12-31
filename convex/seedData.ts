@@ -13,7 +13,7 @@ import A3a_data from "./data/A3a_data.json";
 import A3b_data from "./data/A3b_data.json";
 import A4_data from "./data/A4_data.json";
 import A4a_data from "./data/A4a_data.json";
-import A4B_data from "./data/A4B_data.json";
+import A4B_data from "./data/A4B_data_fixed.json";
 import B1_data from "./data/B1_data.json";
 import B1A_data from "./data/B1A_data.json";
 import PA_data from "./data/P-A_data.json";
@@ -171,21 +171,30 @@ const SETS: SetDefinition[] = [
 ];
 
 // ==================== RARITY MAPPING (TCGdex API format) ====================
+// IMPORTANT: Must use symbols that match existing database!
+// Database uses: ★ (black star U+2605), ♛ (crown U+265B)
 const RARITY_API_MAP: Record<string, string> = {
   // Diamond rarities from TCGdex
   "One Diamond": "◆",
   "Two Diamond": "◆◆",
   "Three Diamond": "◆◆◆",
   "Four Diamond": "◆◆◆◆",
-  // Star rarities
+  // Star rarities (TCGdex format) - use BLACK STAR ★
   "One Star": "★",
   "Two Star": "★★",
   "Three Star": "★★★",
-  // Crown
+  // Crown - use crown symbol ♛
   "Crown": "♛",
   // Promo
   "Promo": "★",
 };
+
+// All possible rarities that need to exist in database
+const ALL_RARITIES = [
+  "◆", "◆◆", "◆◆◆", "◆◆◆◆",  // Diamond rarities
+  "★", "★★", "★★★",           // Star rarities (black star)
+  "♛",                         // Crown rarity
+];
 
 const B1_UNCOMMON_IDS = new Set([
   "009", "012", "024", "026", "029", "034", "040", "042", "047", "054",
@@ -506,11 +515,11 @@ export const seedSet = mutation({
     const rarities = await ctx.db.query("rarities").collect();
     const rarityMap = new Map(rarities.map(r => [r.name, r._id]));
     
-    // Ensure all rarities exist
-    for (const [, displayName] of Object.entries(RARITY_API_MAP)) {
-      if (!rarityMap.has(displayName)) {
-        const id = await ctx.db.insert("rarities", { name: displayName, imageUrl: "" });
-        rarityMap.set(displayName, id);
+    // Ensure all rarities exist (including star and crown)
+    for (const rarityName of ALL_RARITIES) {
+      if (!rarityMap.has(rarityName)) {
+        const id = await ctx.db.insert("rarities", { name: rarityName, imageUrl: "" });
+        rarityMap.set(rarityName, id);
       }
     }
 
@@ -522,8 +531,17 @@ export const seedSet = mutation({
     let cardCount = 0;
 
     for (const card of cards) {
-      // Use rarity from JSON (TCGdex API)
-      const rarityName = RARITY_API_MAP[card.rarity] || "◆";
+      // Use rarity from JSON - support both TCGdex format and direct symbols
+      let rarityName = "◆";
+      if (card.rarity) {
+        // If it's a TCGdex format like "One Diamond", map it
+        if (RARITY_API_MAP[card.rarity]) {
+          rarityName = RARITY_API_MAP[card.rarity];
+        } else {
+          // Otherwise use it directly (e.g., "◆", "◆◆", "☆", etc.)
+          rarityName = card.rarity;
+        }
+      }
       const rarityId = rarityMap.get(rarityName) || defaultRarityId;
       
       // Use data from JSON instead of detection
@@ -601,13 +619,13 @@ export const seedAll = mutation({
       seriesMap.set(name, id);
     }
 
-    // Ensure rarities exist
+    // Ensure all rarities exist (including star and crown)
     const rarities = await ctx.db.query("rarities").collect();
     const rarityMap = new Map(rarities.map(r => [r.name, r._id]));
-    for (const [, displayName] of Object.entries(RARITY_API_MAP)) {
-      if (!rarityMap.has(displayName)) {
-        const id = await ctx.db.insert("rarities", { name: displayName, imageUrl: "" });
-        rarityMap.set(displayName, id);
+    for (const rarityName of ALL_RARITIES) {
+      if (!rarityMap.has(rarityName)) {
+        const id = await ctx.db.insert("rarities", { name: rarityName, imageUrl: "" });
+        rarityMap.set(rarityName, id);
       }
     }
     const defaultRarityId = rarityMap.get("◆")!;
@@ -640,8 +658,15 @@ export const seedAll = mutation({
       const cards = setDef.data.cards || [];
 
       for (const card of cards) {
-        // Use rarity from JSON (TCGdex API)
-        const rarityName = RARITY_API_MAP[card.rarity] || "◆";
+        // Use rarity from JSON - support both TCGdex format and direct symbols
+        let rarityName = "◆";
+        if (card.rarity) {
+          if (RARITY_API_MAP[card.rarity]) {
+            rarityName = RARITY_API_MAP[card.rarity];
+          } else {
+            rarityName = card.rarity;
+          }
+        }
         const rarityId = rarityMap.get(rarityName) || defaultRarityId;
         
         // Use data from JSON instead of detection

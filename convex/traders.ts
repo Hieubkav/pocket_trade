@@ -11,10 +11,11 @@ function simpleHash(str: string): string {
   return hash.toString(16);
 }
 
+// ============ ADMIN: Giới hạn 200 traders ============
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("traders").collect();
+    return await ctx.db.query("traders").take(200);
   },
 });
 

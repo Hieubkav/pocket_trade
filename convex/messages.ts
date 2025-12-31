@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
-// Lấy messages của chat
+// ============ OPTIMIZED: Chỉ load traders liên quan ============
 export const listByChat = query({
   args: { chatId: v.id("chats") },
   handler: async (ctx, args) => {
@@ -11,10 +11,15 @@ export const listByChat = query({
       .order("asc")
       .collect();
 
-    const traders = await ctx.db.query("traders").collect();
+    if (messages.length === 0) return [];
+
+    // Chỉ load traders liên quan (thay vì ALL traders!)
+    const senderIds = [...new Set(messages.map(m => m.senderId))];
+    const tradersRaw = await Promise.all(senderIds.map(id => ctx.db.get(id)));
+    const traderMap = new Map(tradersRaw.filter(Boolean).map(t => [t!._id, t!]));
 
     return messages.map((msg) => {
-      const sender = traders.find((t) => t._id === msg.senderId);
+      const sender = traderMap.get(msg.senderId);
       return {
         ...msg,
         senderName: sender?.name ?? "",

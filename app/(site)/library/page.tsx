@@ -8,11 +8,11 @@ import { SortOption, SortDirection, FilterState, PokemonCard, PokemonType } from
 import CardItem from '../../components/CardItem';
 import SearchAndFilters from '../../components/SearchAndFilters';
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 24;
 
 export default function LibraryPage() {
   const router = useRouter();
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
   const [allCards, setAllCards] = useState<PokemonCard[]>([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadMoreFnRef = useRef<() => void>(() => {});
@@ -36,10 +36,10 @@ export default function LibraryPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Query with server-side filtering
+  // Query with server-side filtering (page-based)
   const cardsData = useQuery(api.cards.listPaginated, { 
     limit: PAGE_SIZE, 
-    cursor,
+    page: currentPage,
     search: debouncedSearch || undefined,
     category: filters.category,
     collection: filters.collection,
@@ -50,7 +50,7 @@ export default function LibraryPage() {
 
   // Reset cards when filters/search/sort change
   useEffect(() => {
-    setCursor(undefined);
+    setCurrentPage(1);
     setAllCards([]);
   }, [debouncedSearch, filters, sortOption, sortDirection]);
 
@@ -64,7 +64,6 @@ export default function LibraryPage() {
         type: card.type as PokemonType,
         rarity: parseInt(card.rarityName?.replace(/[^\d]/g, '') || '1') || 1,
         rarityName: card.rarityName,
-        rarityImageUrl: card.rarityImageUrl,
         imageUrl: card.imageUrl,
         subName: card.supertype === 'pokemon' ? card.subtype : '',
         collection: card.setName || card.packName,
@@ -73,7 +72,7 @@ export default function LibraryPage() {
         setCode: card.setCode,
       }));
       
-      if (cursor === undefined) {
+      if (currentPage === 1) {
         setAllCards(newCards);
       } else {
         setAllCards(prev => {
@@ -84,7 +83,7 @@ export default function LibraryPage() {
       }
       setIsLoadingMore(false);
     }
-  }, [cardsData, cursor]);
+  }, [cardsData, currentPage]);
 
   const handleSortChange = (option: SortOption) => {
     if (sortOption === option) {
@@ -95,12 +94,14 @@ export default function LibraryPage() {
     }
   };
 
+  const hasMore = cardsData ? currentPage < cardsData.totalPages : false;
+
   const loadMore = useCallback(() => {
-    if (cardsData?.hasMore && cardsData?.nextCursor && !isLoadingMore) {
+    if (hasMore && !isLoadingMore) {
       setIsLoadingMore(true);
-      setCursor(cardsData.nextCursor);
+      setCurrentPage(prev => prev + 1);
     }
-  }, [cardsData, isLoadingMore]);
+  }, [hasMore, isLoadingMore]);
 
   // Keep ref updated with latest loadMore
   useEffect(() => {
@@ -169,7 +170,7 @@ export default function LibraryPage() {
                 {isLoadingMore && (
                   <div className="animate-spin w-6 h-6 border-3 border-teal-600 border-t-transparent rounded-full" />
                 )}
-                {cardsData?.hasMore && !isLoadingMore && (
+                {hasMore && !isLoadingMore && (
                   <div className="h-1" /> 
                 )}
               </div>

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 // Đếm số bài đăng trong ngày của trader
 export const countTodayPosts = query({
@@ -19,33 +20,78 @@ export const countTodayPosts = query({
   },
 });
 
+// ============ OPTIMIZED: Tách query filter options ============
+export const getFilterOptions = query({
+  args: {},
+  handler: async (ctx) => {
+    const [rarities, sets] = await Promise.all([
+      ctx.db.query("rarities").collect(),
+      ctx.db.query("sets").collect(),
+    ]);
+    return {
+      rarities: rarities.map(r => r.name).sort(),
+      sets: sets.map(s => s.name).sort(),
+    };
+  },
+});
+
+// ============ ADMIN: Giới hạn 100 posts, dùng cho admin panel ============
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const tradePosts = await ctx.db.query("tradePosts").order("desc").collect();
-    const traders = await ctx.db.query("traders").collect();
-    const tradePostCards = await ctx.db.query("tradePostCards").collect();
-    const tradeRequests = await ctx.db.query("tradeRequests").collect();
-    const cards = await ctx.db.query("cards").collect();
+    // Giới hạn 100 posts gần nhất để tránh quá tải bandwidth
+    const tradePosts = await ctx.db.query("tradePosts").order("desc").take(100);
+    
+    if (tradePosts.length === 0) return [];
+    
+    // Chỉ load traders liên quan
+    const traderIds = [...new Set(tradePosts.map(p => p.traderId))];
+    const tradersRaw = await Promise.all(traderIds.map(id => ctx.db.get(id)));
+    const traderMap = new Map(tradersRaw.filter(Boolean).map(t => [t!._id, t!]));
+    
+    // Chỉ load tradePostCards cho posts này
+    const postIds = tradePosts.map(p => p._id);
+    const postCardsArrays = await Promise.all(
+      postIds.map(postId => 
+        ctx.db.query("tradePostCards")
+          .withIndex("by_trade_post", q => q.eq("tradePostId", postId))
+          .collect()
+      )
+    );
+    const postCardsMap = new Map(postIds.map((id, i) => [id, postCardsArrays[i]]));
+    
+    // Chỉ load cards liên quan
+    const allCardIds = new Set<Id<"cards">>();
+    postCardsArrays.flat().forEach(pc => allCardIds.add(pc.cardId));
+    const cardsRaw = await Promise.all([...allCardIds].map(id => ctx.db.get(id)));
+    const cardMap = new Map(cardsRaw.filter(Boolean).map(c => [c!._id, c!]));
+    
+    // Count requests per post (dùng index)
+    const requestCountsArrays = await Promise.all(
+      postIds.map(postId => 
+        ctx.db.query("tradeRequests")
+          .withIndex("by_trade_post", q => q.eq("tradePostId", postId))
+          .collect()
+      )
+    );
+    const requestCountMap = new Map(postIds.map((id, i) => [id, requestCountsArrays[i].length]));
     
     return tradePosts.map(post => {
-      const trader = traders.find(t => t._id === post.traderId);
-      const postCards = tradePostCards.filter(c => c.tradePostId === post._id);
+      const trader = traderMap.get(post.traderId);
+      const postCards = postCardsMap.get(post._id) || [];
       
       const haveCardIds = postCards.filter(c => c.type === "have").map(c => c.cardId);
       const wantCardIds = postCards.filter(c => c.type === "want").map(c => c.cardId);
       
       const haveCardsData = haveCardIds
-        .map(id => cards.find(c => c._id === id))
+        .map(id => cardMap.get(id))
         .filter(Boolean)
         .map(c => ({ _id: c!._id, name: c!.name, imageUrl: c!.imageUrl }));
       
       const wantCardsData = wantCardIds
-        .map(id => cards.find(c => c._id === id))
+        .map(id => cardMap.get(id))
         .filter(Boolean)
         .map(c => ({ _id: c!._id, name: c!.name, imageUrl: c!.imageUrl }));
-      
-      const requestsCount = tradeRequests.filter(r => r.tradePostId === post._id).length;
       
       return {
         ...post,
@@ -56,12 +102,13 @@ export const list = query({
         wantCardsCount: wantCardIds.length,
         haveCards: haveCardsData,
         wantCards: wantCardsData,
-        requestsCount,
+        requestsCount: requestCountMap.get(post._id) || 0,
       };
     });
   },
 });
 
+// ============ OPTIMIZED: Dùng index, chỉ load data cần thiết ============
 export const listPaginated = query({
   args: {
     limit: v.number(),
@@ -76,112 +123,134 @@ export const listPaginated = query({
     sortDir: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const tradePosts = await ctx.db.query("tradePosts").collect();
-    const traders = await ctx.db.query("traders").collect();
-    const tradePostCards = await ctx.db.query("tradePostCards").collect();
-    const cards = await ctx.db.query("cards").collect();
-    const rarities = await ctx.db.query("rarities").collect();
-    const packs = await ctx.db.query("packs").collect();
-    const sets = await ctx.db.query("sets").collect();
-    const tradeRequests = await ctx.db.query("tradeRequests").collect();
-
-    // Enrich cards with rarity and set info
-    const enrichedCards = cards.map(card => {
-      const rarity = rarities.find(r => r._id === card.rarityId);
-      const pack = packs.find(p => p._id === card.packId);
-      const set = pack ? sets.find(s => s._id === pack.setId) : undefined;
-      return { ...card, rarityName: rarity?.name || "", setName: set?.name || "" };
+    // ============ Step 1: Query tradePosts với index ============
+    // Use index for status or trader filter
+    const tradePosts = args.status
+      ? await ctx.db.query("tradePosts").withIndex("by_status", q => q.eq("status", args.status!)).collect()
+      : args.traderId
+        ? await ctx.db.query("tradePosts").withIndex("by_trader", q => q.eq("traderId", args.traderId!)).collect()
+        : await ctx.db.query("tradePosts").collect();
+    
+    // Early filter by simple conditions
+    let filteredPosts = tradePosts.filter(post => {
+      if (args.status && post.status !== args.status) return false;
+      if (args.status === 'active' && post.isHidden) return false;
+      if (args.traderId && post.traderId !== args.traderId) return false;
+      // Filter by rarity stored on post (if available)
+      if (args.rarity && post.rarity && post.rarity !== args.rarity) return false;
+      return true;
     });
-
-    // Build enriched posts
-    const enrichedPosts = tradePosts.map(post => {
-      const trader = traders.find(t => t._id === post.traderId);
-      const postCards = tradePostCards.filter(c => c.tradePostId === post._id);
+    
+    // ============ Step 2: Load chỉ traders liên quan ============
+    const traderIds = [...new Set(filteredPosts.map(p => p.traderId))];
+    const traders = await Promise.all(traderIds.map(id => ctx.db.get(id)));
+    const traderMap = new Map(traders.filter(Boolean).map(t => [t!._id, t!]));
+    
+    // Filter by online if needed
+    if (args.onlineOnly) {
+      filteredPosts = filteredPosts.filter(post => {
+        const trader = traderMap.get(post.traderId);
+        return trader?.isOnline;
+      });
+    }
+    
+    // ============ Step 3: Load tradePostCards chỉ cho filtered posts ============
+    const postIds = filteredPosts.map(p => p._id);
+    const allPostCards = await Promise.all(
+      postIds.map(postId => 
+        ctx.db.query("tradePostCards")
+          .withIndex("by_trade_post", q => q.eq("tradePostId", postId))
+          .collect()
+      )
+    );
+    const postCardsMap = new Map(postIds.map((id, i) => [id, allPostCards[i]]));
+    
+    // ============ Step 4: Load chỉ cards liên quan ============
+    const allCardIds = new Set<Id<"cards">>();
+    allPostCards.flat().forEach(pc => allCardIds.add(pc.cardId));
+    
+    const cardsArray = await Promise.all([...allCardIds].map(id => ctx.db.get(id)));
+    const cardMap = new Map(cardsArray.filter(Boolean).map(c => [c!._id, c!]));
+    
+    // Load metadata for cards (small tables)
+    const [rarities, packs, sets] = await Promise.all([
+      ctx.db.query("rarities").collect(),
+      ctx.db.query("packs").collect(),
+      ctx.db.query("sets").collect(),
+    ]);
+    const rarityMap = new Map(rarities.map(r => [r._id, r.name]));
+    const packMap = new Map(packs.map(p => [p._id, p.setId]));
+    const setMap = new Map(sets.map(s => [s._id, s.name]));
+    
+    // Helper to enrich card
+    const enrichCard = (cardId: Id<"cards">) => {
+      const card = cardMap.get(cardId);
+      if (!card) return null;
+      const rarityName = rarityMap.get(card.rarityId) || "";
+      const setId = packMap.get(card.packId);
+      const setName = setId ? setMap.get(setId) || "" : "";
+      return { _id: card._id, name: card.name, imageUrl: card.imageUrl, rarityName, setName };
+    };
+    
+    // ============ Step 5: Build enriched posts ============
+    let enrichedPosts = filteredPosts.map(post => {
+      const trader = traderMap.get(post.traderId);
+      const postCards = postCardsMap.get(post._id) || [];
       
-      const haveCardIds = postCards.filter(c => c.type === "have").map(c => c.cardId);
-      const wantCardIds = postCards.filter(c => c.type === "want").map(c => c.cardId);
+      const haveCards = postCards.filter(c => c.type === "have").map(c => enrichCard(c.cardId)).filter(Boolean);
+      const wantCards = postCards.filter(c => c.type === "want").map(c => enrichCard(c.cardId)).filter(Boolean);
       
-      const haveCardsData = haveCardIds
-        .map(id => enrichedCards.find(c => c._id === id))
-        .filter(Boolean);
-      
-      const wantCardsData = wantCardIds
-        .map(id => enrichedCards.find(c => c._id === id))
-        .filter(Boolean);
-      
-      // Count pending requests for this post
-      const pendingRequests = tradeRequests.filter(
-        r => r.tradePostId === post._id && r.status === "pending"
-      ).length;
-
       return {
         ...post,
         traderName: trader?.name || "",
         traderAvatar: trader?.avatarUrl || "",
         traderIsOnline: trader?.isOnline || false,
         traderTradePoint: trader?.tradePoint ?? 0,
-        requestsCount: pendingRequests,
-        haveCardsCount: haveCardIds.length,
-        wantCardsCount: wantCardIds.length,
-        haveCards: haveCardsData.map(c => ({ _id: c!._id, name: c!.name, imageUrl: c!.imageUrl, rarityName: c!.rarityName, setName: c!.setName })),
-        wantCards: wantCardsData.map(c => ({ _id: c!._id, name: c!.name, imageUrl: c!.imageUrl, rarityName: c!.rarityName, setName: c!.setName })),
-        // For filtering
-        _allRarities: [...new Set([...haveCardsData, ...wantCardsData].map(c => c?.rarityName).filter(Boolean))],
-        _allSets: [...new Set([...haveCardsData, ...wantCardsData].map(c => c?.setName).filter(Boolean))],
+        requestsCount: 0, // Will be loaded separately if needed
+        haveCardsCount: haveCards.length,
+        wantCardsCount: wantCards.length,
+        haveCards: haveCards as { _id: Id<"cards">; name: string; imageUrl: string; rarityName: string; setName: string }[],
+        wantCards: wantCards as { _id: Id<"cards">; name: string; imageUrl: string; rarityName: string; setName: string }[],
       };
     });
-
-    // Filter
-    let filtered = enrichedPosts.filter(post => {
-      if (args.status && post.status !== args.status) return false;
-      if (args.status === 'active' && post.isHidden) return false;
-      if (args.traderId && post.traderId !== args.traderId) return false;
-      if (args.onlineOnly && !post.traderIsOnline) return false;
-      if (args.rarity && !post._allRarities.includes(args.rarity)) return false;
-      if (args.setName && !post._allSets.includes(args.setName)) return false;
-      if (args.cardName) {
-        const searchTerm = args.cardName.toLowerCase();
-        const hasMatch = [...post.haveCards, ...post.wantCards].some(c => 
-          c.name.toLowerCase().includes(searchTerm)
-        );
-        if (!hasMatch) return false;
-      }
-      return true;
-    });
-
-    // Sort
+    
+    // ============ Step 6: Apply remaining filters ============
+    if (args.setName) {
+      enrichedPosts = enrichedPosts.filter(post => 
+        [...post.haveCards, ...post.wantCards].some(c => c.setName === args.setName)
+      );
+    }
+    
+    if (args.cardName) {
+      const searchTerm = args.cardName.toLowerCase();
+      enrichedPosts = enrichedPosts.filter(post =>
+        [...post.haveCards, ...post.wantCards].some(c => c.name.toLowerCase().includes(searchTerm))
+      );
+    }
+    
+    // ============ Step 7: Sort ============
     const sortBy = args.sortBy || "EXPIRES";
     const sortDir = args.sortDir || "ASC";
-    filtered.sort((a, b) => {
-      let comparison = 0;
-      switch (sortBy) {
-        case "CREATED":
-          comparison = a._creationTime - b._creationTime;
-          break;
-        case "EXPIRES":
-        default:
-          comparison = a.expiresAt - b.expiresAt;
-          break;
-      }
-      return sortDir === "ASC" ? comparison : -comparison;
+    enrichedPosts.sort((a, b) => {
+      const cmp = sortBy === "CREATED" 
+        ? a._creationTime - b._creationTime 
+        : a.expiresAt - b.expiresAt;
+      return sortDir === "ASC" ? cmp : -cmp;
     });
-
-    // Pagination
+    
+    // ============ Step 8: Paginate ============
     const currentPage = args.page || 1;
     const startIndex = (currentPage - 1) * args.limit;
-    const items = filtered.slice(startIndex, startIndex + args.limit);
-    const totalPages = Math.ceil(filtered.length / args.limit);
-
-    // Get unique values for filters
-    const allRarities = [...new Set(enrichedPosts.flatMap(p => p._allRarities))].sort();
-    const allSets = [...new Set(enrichedPosts.flatMap(p => p._allSets))].sort();
-
-    // Clean up internal fields
-    const cleanItems = items.map(({ _allRarities, _allSets, ...rest }) => rest);
+    const items = enrichedPosts.slice(startIndex, startIndex + args.limit);
+    const totalPages = Math.ceil(enrichedPosts.length / args.limit);
+    
+    // Get filter options from metadata (already loaded)
+    const allRarities = rarities.map(r => r.name).sort();
+    const allSets = sets.map(s => s.name).sort();
 
     return { 
-      items: cleanItems, 
-      total: filtered.length, 
+      items, 
+      total: enrichedPosts.length, 
       totalPages, 
       currentPage,
       rarities: allRarities,
@@ -190,28 +259,38 @@ export const listPaginated = query({
   },
 });
 
+// ============ OPTIMIZED: Chỉ load cards liên quan, không fetch ALL ============
 export const getById = query({
   args: { id: v.id("tradePosts") },
   handler: async (ctx, args) => {
     const post = await ctx.db.get(args.id);
     if (!post) return null;
     
-    const trader = await ctx.db.get(post.traderId);
-    const tradePostCards = await ctx.db.query("tradePostCards")
-      .withIndex("by_trade_post", q => q.eq("tradePostId", args.id))
-      .collect();
-    const cards = await ctx.db.query("cards").collect();
-    const tradeRequests = await ctx.db.query("tradeRequests")
-      .withIndex("by_trade_post", q => q.eq("tradePostId", args.id))
-      .collect();
+    // Load trader và tradePostCards (dùng index)
+    const [trader, tradePostCards, tradeRequests] = await Promise.all([
+      ctx.db.get(post.traderId),
+      ctx.db.query("tradePostCards")
+        .withIndex("by_trade_post", q => q.eq("tradePostId", args.id))
+        .collect(),
+      ctx.db.query("tradeRequests")
+        .withIndex("by_trade_post", q => q.eq("tradePostId", args.id))
+        .collect(),
+    ]);
     
-    const haveCards = tradePostCards
-      .filter(c => c.type === "have")
-      .map(c => cards.find(card => card._id === c.cardId))
+    // Chỉ load cards liên quan (thay vì ALL cards!)
+    const haveCardIds = tradePostCards.filter(c => c.type === "have").map(c => c.cardId);
+    const wantCardIds = tradePostCards.filter(c => c.type === "want").map(c => c.cardId);
+    const allCardIds = [...haveCardIds, ...wantCardIds];
+    
+    const cardsRaw = await Promise.all(allCardIds.map(id => ctx.db.get(id)));
+    const cardMap = new Map(cardsRaw.filter(Boolean).map(c => [c!._id, c!]));
+    
+    // Type assertion để loại bỏ undefined
+    const haveCards = haveCardIds
+      .map(id => cardMap.get(id))
       .filter((c): c is NonNullable<typeof c> => c !== undefined);
-    const wantCards = tradePostCards
-      .filter(c => c.type === "want")
-      .map(c => cards.find(card => card._id === c.cardId))
+    const wantCards = wantCardIds
+      .map(id => cardMap.get(id))
       .filter((c): c is NonNullable<typeof c> => c !== undefined);
     
     return {
@@ -353,7 +432,7 @@ export const create = mutation({
   },
 });
 
-// Lấy trade posts liên quan đến 1 card (người đang tìm hoặc đang có card này)
+// ============ OPTIMIZED: Chỉ load data liên quan, không fetch ALL ============
 export const listByCard = query({
   args: { 
     cardId: v.id("cards"),
@@ -363,42 +442,63 @@ export const listByCard = query({
   handler: async (ctx, args) => {
     const limit = args.limit ?? 20;
     
-    // Find tradePostCards containing this card
+    // Dùng index thay vì filter (cần thêm index by_card_type vào schema)
     const tradePostCards = await ctx.db
       .query("tradePostCards")
-      .filter(q => q.and(
-        q.eq(q.field("cardId"), args.cardId),
-        q.eq(q.field("type"), args.type)
-      ))
+      .withIndex("by_card", q => q.eq("cardId", args.cardId))
       .collect();
     
-    const postIds = [...new Set(tradePostCards.map(tpc => tpc.tradePostId))];
+    // Filter by type trong JS (nhỏ hơn nhiều so với fetch ALL)
+    const filteredPostCards = tradePostCards.filter(tpc => tpc.type === args.type);
+    const postIds = [...new Set(filteredPostCards.map(tpc => tpc.tradePostId))];
     
-    // Get trade posts
+    // Get trade posts (chỉ load cần thiết)
     const postsRaw = await Promise.all(postIds.map(id => ctx.db.get(id)));
     const activePosts = postsRaw
       .filter(p => p && p.status === "active" && !p.isHidden && p.expiresAt > Date.now())
       .slice(0, limit);
     
-    // Get related data
-    const traders = await ctx.db.query("traders").collect();
-    const allTradePostCards = await ctx.db.query("tradePostCards").collect();
-    const cards = await ctx.db.query("cards").collect();
+    if (activePosts.length === 0) return [];
+    
+    // Chỉ load traders liên quan
+    const traderIds = [...new Set(activePosts.map(p => p!.traderId))];
+    const tradersRaw = await Promise.all(traderIds.map(id => ctx.db.get(id)));
+    const traderMap = new Map(tradersRaw.filter(Boolean).map(t => [t!._id, t!]));
+    
+    // Chỉ load tradePostCards cho active posts
+    const activePostIds = activePosts.map(p => p!._id);
+    const postCardsArrays = await Promise.all(
+      activePostIds.map(postId => 
+        ctx.db.query("tradePostCards")
+          .withIndex("by_trade_post", q => q.eq("tradePostId", postId))
+          .collect()
+      )
+    );
+    const postCardsMap = new Map(activePostIds.map((id, i) => [id, postCardsArrays[i]]));
+    
+    // Chỉ load cards liên quan
+    const allCardIds = new Set<Id<"cards">>();
+    postCardsArrays.flat().forEach(pc => allCardIds.add(pc.cardId));
+    const cardsRaw = await Promise.all([...allCardIds].map(id => ctx.db.get(id)));
+    const cardMap = new Map(cardsRaw.filter(Boolean).map(c => [c!._id, c!]));
+    
+    // Load rarities (small table, OK)
     const rarities = await ctx.db.query("rarities").collect();
+    const rarityMap = new Map(rarities.map(r => [r._id, r.name]));
     
     return activePosts.map(post => {
       if (!post) return null;
-      const trader = traders.find(t => t._id === post.traderId);
-      const postCards = allTradePostCards.filter(c => c.tradePostId === post._id);
+      const trader = traderMap.get(post.traderId);
+      const postCards = postCardsMap.get(post._id) || [];
       
       const haveCardIds = postCards.filter(c => c.type === "have").map(c => c.cardId);
       const wantCardIds = postCards.filter(c => c.type === "want").map(c => c.cardId);
       
-      const enrichCard = (cardId: typeof cards[0]["_id"]) => {
-        const card = cards.find(c => c._id === cardId);
+      const enrichCard = (cardId: Id<"cards">) => {
+        const card = cardMap.get(cardId);
         if (!card) return null;
-        const rarity = rarities.find(r => r._id === card.rarityId);
-        return { _id: card._id, name: card.name, imageUrl: card.imageUrl, rarityName: rarity?.name || "" };
+        const rarityName = rarityMap.get(card.rarityId) || "";
+        return { _id: card._id, name: card.name, imageUrl: card.imageUrl, rarityName };
       };
       
       return {

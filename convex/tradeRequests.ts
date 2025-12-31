@@ -14,7 +14,7 @@ export const countPendingByPost = query({
   },
 });
 
-// Lấy outgoing requests của trader (requests mình gửi đi)
+// ============ OPTIMIZED: Chỉ load data liên quan ============
 export const listOutgoingByTrader = query({
   args: { traderId: v.id("traders") },
   handler: async (ctx, args) => {
@@ -23,24 +23,38 @@ export const listOutgoingByTrader = query({
       .withIndex("by_requester", q => q.eq("requesterId", args.traderId))
       .collect();
 
-    const tradePosts = await ctx.db.query("tradePosts").collect();
-    const traders = await ctx.db.query("traders").collect();
-    const cards = await ctx.db.query("cards").collect();
-
-    // Chỉ lấy requests trong 24h qua nếu đã accepted/declined
+    // Filter trước khi load related data
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const filteredRequests = requests.filter(req => {
+      if (req.status === "pending") return true;
+      return req._creationTime >= oneDayAgo;
+    });
 
-    return requests
-      .filter(req => {
-        if (req.status === "pending") return true;
-        // Chỉ hiện accepted/declined trong 24h
-        return req._creationTime >= oneDayAgo;
-      })
+    if (filteredRequests.length === 0) return [];
+
+    // Chỉ load posts và cards liên quan
+    const postIds = [...new Set(filteredRequests.map(r => r.tradePostId))];
+    const cardIds = [...new Set(filteredRequests.flatMap(r => [r.offeredCardId, r.requestedCardId]))];
+    
+    const [posts, cards] = await Promise.all([
+      Promise.all(postIds.map(id => ctx.db.get(id))),
+      Promise.all(cardIds.map(id => ctx.db.get(id))),
+    ]);
+    
+    const postMap = new Map(posts.filter(Boolean).map(p => [p!._id, p!]));
+    const cardMap = new Map(cards.filter(Boolean).map(c => [c!._id, c!]));
+    
+    // Chỉ load traders liên quan (post owners)
+    const traderIds = [...new Set(posts.filter(Boolean).map(p => p!.traderId))];
+    const traders = await Promise.all(traderIds.map(id => ctx.db.get(id)));
+    const traderMap = new Map(traders.filter(Boolean).map(t => [t!._id, t!]));
+
+    return filteredRequests
       .map(req => {
-        const post = tradePosts.find(p => p._id === req.tradePostId);
-        const postOwner = post ? traders.find(t => t._id === post.traderId) : null;
-        const offeredCard = cards.find(c => c._id === req.offeredCardId);
-        const requestedCard = cards.find(c => c._id === req.requestedCardId);
+        const post = postMap.get(req.tradePostId);
+        const postOwner = post ? traderMap.get(post.traderId) : null;
+        const offeredCard = cardMap.get(req.offeredCardId);
+        const requestedCard = cardMap.get(req.requestedCardId);
 
         return {
           ...req,
@@ -76,6 +90,7 @@ export const countTodayRequests = query({
   },
 });
 
+// ============ OPTIMIZED: Chỉ load data liên quan ============
 export const listByPost = query({
   args: { tradePostId: v.id("tradePosts") },
   handler: async (ctx, args) => {
@@ -84,13 +99,24 @@ export const listByPost = query({
       .withIndex("by_trade_post", q => q.eq("tradePostId", args.tradePostId))
       .collect();
     
-    const traders = await ctx.db.query("traders").collect();
-    const cards = await ctx.db.query("cards").collect();
+    if (requests.length === 0) return [];
+    
+    // Chỉ load traders và cards liên quan
+    const traderIds = [...new Set(requests.map(r => r.requesterId))];
+    const cardIds = [...new Set(requests.flatMap(r => [r.offeredCardId, r.requestedCardId]))];
+    
+    const [traders, cards] = await Promise.all([
+      Promise.all(traderIds.map(id => ctx.db.get(id))),
+      Promise.all(cardIds.map(id => ctx.db.get(id))),
+    ]);
+    
+    const traderMap = new Map(traders.filter(Boolean).map(t => [t!._id, t!]));
+    const cardMap = new Map(cards.filter(Boolean).map(c => [c!._id, c!]));
     
     return requests.map(req => {
-      const requester = traders.find(t => t._id === req.requesterId);
-      const offeredCard = cards.find(c => c._id === req.offeredCardId);
-      const requestedCard = cards.find(c => c._id === req.requestedCardId);
+      const requester = traderMap.get(req.requesterId);
+      const offeredCard = cardMap.get(req.offeredCardId);
+      const requestedCard = cardMap.get(req.requestedCardId);
       
       return {
         ...req,
@@ -104,6 +130,7 @@ export const listByPost = query({
   },
 });
 
+// ============ OPTIMIZED: Chỉ load data liên quan ============
 export const listByRequester = query({
   args: { requesterId: v.id("traders") },
   handler: async (ctx, args) => {
@@ -112,15 +139,30 @@ export const listByRequester = query({
       .withIndex("by_requester", q => q.eq("requesterId", args.requesterId))
       .collect();
     
-    const tradePosts = await ctx.db.query("tradePosts").collect();
-    const traders = await ctx.db.query("traders").collect();
-    const cards = await ctx.db.query("cards").collect();
+    if (requests.length === 0) return [];
+    
+    // Chỉ load posts và cards liên quan
+    const postIds = [...new Set(requests.map(r => r.tradePostId))];
+    const cardIds = [...new Set(requests.flatMap(r => [r.offeredCardId, r.requestedCardId]))];
+    
+    const [posts, cards] = await Promise.all([
+      Promise.all(postIds.map(id => ctx.db.get(id))),
+      Promise.all(cardIds.map(id => ctx.db.get(id))),
+    ]);
+    
+    const postMap = new Map(posts.filter(Boolean).map(p => [p!._id, p!]));
+    const cardMap = new Map(cards.filter(Boolean).map(c => [c!._id, c!]));
+    
+    // Chỉ load traders liên quan (post owners)
+    const traderIds = [...new Set(posts.filter(Boolean).map(p => p!.traderId))];
+    const traders = await Promise.all(traderIds.map(id => ctx.db.get(id)));
+    const traderMap = new Map(traders.filter(Boolean).map(t => [t!._id, t!]));
     
     return requests.map(req => {
-      const post = tradePosts.find(p => p._id === req.tradePostId);
-      const postOwner = post ? traders.find(t => t._id === post.traderId) : null;
-      const offeredCard = cards.find(c => c._id === req.offeredCardId);
-      const requestedCard = cards.find(c => c._id === req.requestedCardId);
+      const post = postMap.get(req.tradePostId);
+      const postOwner = post ? traderMap.get(post.traderId) : null;
+      const offeredCard = cardMap.get(req.offeredCardId);
+      const requestedCard = cardMap.get(req.requestedCardId);
       
       return {
         ...req,

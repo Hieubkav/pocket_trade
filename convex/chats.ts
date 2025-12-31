@@ -1,30 +1,41 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
-// Lấy danh sách chat của trader
+// ============ OPTIMIZED: Chỉ load data liên quan ============
 export const listByTrader = query({
   args: { traderId: v.id("traders") },
   handler: async (ctx, args) => {
-    // Lấy chats mà trader là host hoặc guest
-    const asHost = await ctx.db
-      .query("chats")
-      .withIndex("by_host", (q) => q.eq("traderHostId", args.traderId))
-      .collect();
-
-    const asGuest = await ctx.db
-      .query("chats")
-      .withIndex("by_guest", (q) => q.eq("traderGuestId", args.traderId))
-      .collect();
+    // Lấy chats mà trader là host hoặc guest (dùng index)
+    const [asHost, asGuest] = await Promise.all([
+      ctx.db.query("chats").withIndex("by_host", (q) => q.eq("traderHostId", args.traderId)).collect(),
+      ctx.db.query("chats").withIndex("by_guest", (q) => q.eq("traderGuestId", args.traderId)).collect(),
+    ]);
 
     const allChats = [...asHost, ...asGuest];
     const uniqueChats = allChats.filter(
       (chat, index, self) => self.findIndex((c) => c._id === chat._id) === index
     );
 
-    // Lấy thông tin traders và messages
-    const traders = await ctx.db.query("traders").collect();
-    const tradeRequests = await ctx.db.query("tradeRequests").collect();
-    const cards = await ctx.db.query("cards").collect();
+    if (uniqueChats.length === 0) return [];
+
+    // Chỉ load traders và cards liên quan
+    const partnerIds = [...new Set(uniqueChats.map(c => 
+      c.traderHostId === args.traderId ? c.traderGuestId : c.traderHostId
+    ))];
+    const requestIds = [...new Set(uniqueChats.map(c => c.tradeRequestId))];
+    
+    const [partners, requests] = await Promise.all([
+      Promise.all(partnerIds.map(id => ctx.db.get(id))),
+      Promise.all(requestIds.map(id => ctx.db.get(id))),
+    ]);
+    
+    const partnerMap = new Map(partners.filter(Boolean).map(t => [t!._id, t!]));
+    const requestMap = new Map(requests.filter(Boolean).map(r => [r!._id, r!]));
+    
+    // Chỉ load cards từ requests
+    const cardIds = [...new Set(requests.filter(Boolean).flatMap(r => [r!.offeredCardId, r!.requestedCardId]))];
+    const cards = await Promise.all(cardIds.map(id => ctx.db.get(id)));
+    const cardMap = new Map(cards.filter(Boolean).map(c => [c!._id, c!]));
 
     const chatsWithDetails = await Promise.all(
       uniqueChats.map(async (chat) => {
@@ -46,20 +57,13 @@ export const listByTrader = query({
         ).length;
 
         // Lấy thông tin partner
-        const partnerId =
-          chat.traderHostId === args.traderId
-            ? chat.traderGuestId
-            : chat.traderHostId;
-        const partner = traders.find((t) => t._id === partnerId);
+        const partnerId = chat.traderHostId === args.traderId ? chat.traderGuestId : chat.traderHostId;
+        const partner = partnerMap.get(partnerId);
 
         // Lấy thông tin trade request và cards
-        const request = tradeRequests.find((r) => r._id === chat.tradeRequestId);
-        const offeredCard = request
-          ? cards.find((c) => c._id === request.offeredCardId)
-          : null;
-        const requestedCard = request
-          ? cards.find((c) => c._id === request.requestedCardId)
-          : null;
+        const request = requestMap.get(chat.tradeRequestId);
+        const offeredCard = request ? cardMap.get(request.offeredCardId) : null;
+        const requestedCard = request ? cardMap.get(request.requestedCardId) : null;
 
         return {
           _id: chat._id,
@@ -107,25 +111,27 @@ export const listByTrader = query({
   },
 });
 
-// Lấy chi tiết chat
+// ============ OPTIMIZED: Chỉ load data liên quan ============
 export const getById = query({
   args: { chatId: v.id("chats") },
   handler: async (ctx, args) => {
     const chat = await ctx.db.get(args.chatId);
     if (!chat) return null;
 
-    const traders = await ctx.db.query("traders").collect();
-    const host = traders.find((t) => t._id === chat.traderHostId);
-    const guest = traders.find((t) => t._id === chat.traderGuestId);
+    // Chỉ load 2 traders liên quan
+    const [host, guest, request] = await Promise.all([
+      ctx.db.get(chat.traderHostId),
+      ctx.db.get(chat.traderGuestId),
+      ctx.db.get(chat.tradeRequestId),
+    ]);
 
-    const request = await ctx.db.get(chat.tradeRequestId);
-    const cards = await ctx.db.query("cards").collect();
-    const offeredCard = request
-      ? cards.find((c) => c._id === request.offeredCardId)
-      : null;
-    const requestedCard = request
-      ? cards.find((c) => c._id === request.requestedCardId)
-      : null;
+    // Chỉ load 2 cards liên quan
+    const [offeredCard, requestedCard] = request 
+      ? await Promise.all([
+          ctx.db.get(request.offeredCardId),
+          ctx.db.get(request.requestedCardId),
+        ])
+      : [null, null];
 
     return {
       ...chat,

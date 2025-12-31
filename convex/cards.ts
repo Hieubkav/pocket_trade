@@ -1,29 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-
-export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    const cards = await ctx.db.query("cards").collect();
-    const rarities = await ctx.db.query("rarities").collect();
-    const packs = await ctx.db.query("packs").collect();
-    const sets = await ctx.db.query("sets").collect();
-    
-    return cards.map(card => {
-      const rarity = rarities.find(r => r._id === card.rarityId);
-      const pack = packs.find(p => p._id === card.packId);
-      const set = pack ? sets.find(s => s._id === pack.setId) : undefined;
-      return {
-        ...card,
-        rarityName: rarity?.name || "",
-        rarityImageUrl: rarity?.imageUrl || "",
-        packName: pack?.name || "",
-        setName: set?.name || "",
-        setCode: set?.setCode || "",
-      };
-    });
-  },
-});
+import { Id } from "./_generated/dataModel";
 
 // Rarity order for sorting
 const RARITY_ORDER: Record<string, number> = {
@@ -32,11 +9,37 @@ const RARITY_ORDER: Record<string, number> = {
   '♢': 8, 'Shiny Rare': 9, 'Shiny Super Rare': 10, 'Crown Rare': 11,
 };
 
+// ============ OPTIMIZED: Tách query lấy filter options (gọi 1 lần, cache client) ============
+export const getFilterOptions = query({
+  args: {},
+  handler: async (ctx) => {
+    const [rarities, packs, sets] = await Promise.all([
+      ctx.db.query("rarities").collect(),
+      ctx.db.query("packs").collect(),
+      ctx.db.query("sets").collect(),
+    ]);
+    
+    // Build collections list
+    const collections = sets.map(s => s.name).sort();
+    
+    // Build rarities list sorted
+    const rarityNames = rarities.map(r => r.name);
+    rarityNames.sort((a, b) => (RARITY_ORDER[a] || 0) - (RARITY_ORDER[b] || 0));
+    
+    // Build lookup maps for client-side enrichment
+    const rarityMap = Object.fromEntries(rarities.map(r => [r._id, { name: r.name, imageUrl: r.imageUrl }]));
+    const packMap = Object.fromEntries(packs.map(p => [p._id, { name: p.name, setId: p.setId }]));
+    const setMap = Object.fromEntries(sets.map(s => [s._id, { name: s.name, setCode: s.setCode }]));
+    
+    return { collections, rarities: rarityNames, rarityMap, packMap, setMap };
+  },
+});
+
+// ============ OPTIMIZED V2: Dùng index + take thay vì collect all ============
 export const listPaginated = query({
   args: { 
     limit: v.number(),
     page: v.optional(v.number()),
-    cursor: v.optional(v.string()),
     search: v.optional(v.string()),
     category: v.optional(v.string()),
     collection: v.optional(v.string()),
@@ -46,20 +49,108 @@ export const listPaginated = query({
     sortDir: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const allCardsRaw = await ctx.db.query("cards").collect();
-    const rarities = await ctx.db.query("rarities").collect();
-    const packs = await ctx.db.query("packs").collect();
-    const sets = await ctx.db.query("sets").collect();
+    // Load metadata (small tables, OK to collect - cached)
+    const [rarities, packs, sets] = await Promise.all([
+      ctx.db.query("rarities").collect(),
+      ctx.db.query("packs").collect(),
+      ctx.db.query("sets").collect(),
+    ]);
     
-    // Enrich cards with related data
-    const enrichedCards = allCardsRaw.map(card => {
-      const rarity = rarities.find(r => r._id === card.rarityId);
-      const pack = packs.find(p => p._id === card.packId);
-      const set = pack ? sets.find(s => s._id === pack.setId) : undefined;
+    // Build lookup maps
+    const rarityMap = new Map(rarities.map(r => [r._id, r]));
+    const packMap = new Map(packs.map(p => [p._id, p]));
+    const setMap = new Map(sets.map(s => [s._id, s]));
+    const setByName = new Map(sets.map(s => [s.name, s]));
+    
+    // Find rarityId if filtering by rarity name
+    let filterRarityId: Id<"rarities"> | null = null;
+    if (args.rarity && args.rarity !== "All") {
+      const found = rarities.find(r => r.name === args.rarity);
+      if (found) filterRarityId = found._id;
+    }
+    
+    // Find packIds if filtering by collection (set name)
+    let filterPackIds: Set<Id<"packs">> | null = null;
+    if (args.collection && args.collection !== "All") {
+      const targetSet = setByName.get(args.collection);
+      if (targetSet) {
+        filterPackIds = new Set(
+          packs.filter(p => p.setId === targetSet._id).map(p => p._id)
+        );
+      }
+    }
+    
+    // Find packId for type filter
+    let filterTypePackIds: Set<Id<"packs">> | null = null;
+    if (args.cardType && args.cardType !== "All") {
+      // Type filter will be applied in JS
+    }
+    
+    // ============ STRATEGY: Dùng index phù hợp nhất ============
+    // Priority: rarity > pack > type > all
+    let rawCards;
+    
+    if (filterRarityId) {
+      // Rarity là filter tốt nhất (selective)
+      rawCards = await ctx.db.query("cards")
+        .withIndex("by_rarity", q => q.eq("rarityId", filterRarityId!))
+        .collect();
+    } else if (filterPackIds && filterPackIds.size === 1) {
+      // Single pack filter - dùng index
+      const packId = [...filterPackIds][0];
+      rawCards = await ctx.db.query("cards")
+        .withIndex("by_pack", q => q.eq("packId", packId))
+        .collect();
+    } else if (args.cardType && args.cardType !== "All") {
+      // Type filter - dùng index
+      rawCards = await ctx.db.query("cards")
+        .withIndex("by_type", q => q.eq("type", args.cardType!))
+        .collect();
+    } else {
+      // No selective filter - fetch all (unavoidable cho search toàn bộ)
+      // Nhưng nếu có search term, có thể dùng .take() để giới hạn
+      rawCards = await ctx.db.query("cards").collect();
+    }
+    
+    // Apply remaining filters in JS
+    const searchLower = (args.search || "").toLowerCase();
+    
+    const filtered = rawCards.filter(card => {
+      // Search filter
+      if (args.search && searchLower) {
+        const nameMatch = card.name.toLowerCase().includes(searchLower);
+        const typeMatch = card.type.toLowerCase().includes(searchLower);
+        if (!nameMatch && !typeMatch) return false;
+      }
+      
+      // Category filter
+      if (args.category && args.category !== "All") {
+        const isPokemon = card.supertype === "pokemon";
+        if (args.category === "Pokemon" && !isPokemon) return false;
+        if (args.category !== "Pokemon" && isPokemon) return false;
+      }
+      
+      // Collection filter (by packId) - only if not already filtered by index
+      if (filterPackIds && filterPackIds.size > 1 && !filterPackIds.has(card.packId)) return false;
+      
+      // Type filter - only if not already filtered by index
+      if (args.cardType && args.cardType !== "All" && !filterRarityId && !(filterPackIds && filterPackIds.size === 1)) {
+        // Already filtered by index, skip
+      } else if (args.cardType && args.cardType !== "All" && card.type !== args.cardType) {
+        return false;
+      }
+      
+      return true;
+    });
+    
+    // Enrich ONLY filtered cards (not all)
+    const enriched = filtered.map(card => {
+      const rarity = rarityMap.get(card.rarityId);
+      const pack = packMap.get(card.packId);
+      const set = pack ? setMap.get(pack.setId) : undefined;
       return {
         ...card,
         rarityName: rarity?.name || "",
-        rarityImageUrl: rarity?.imageUrl || "",
         rarityOrder: RARITY_ORDER[rarity?.name || ""] || 0,
         packName: pack?.name || "",
         setName: set?.name || "",
@@ -67,79 +158,72 @@ export const listPaginated = query({
       };
     });
     
-    // Filter
-    const filtered = enrichedCards.filter(card => {
-      const searchLower = (args.search || "").toLowerCase();
-      const matchesSearch = !args.search || 
-        card.name.toLowerCase().includes(searchLower) ||
-        card.type.toLowerCase().includes(searchLower);
-      
-      const matchesCategory = !args.category || args.category === "All" || 
-        (args.category === "Pokemon" ? card.supertype === "pokemon" : card.supertype !== "pokemon");
-      
-      const cardCollection = card.setName || card.packName;
-      const matchesCollection = !args.collection || args.collection === "All" || 
-        cardCollection === args.collection;
-      
-      const matchesType = !args.cardType || args.cardType === "All" || 
-        card.type === args.cardType;
-      
-      const matchesRarity = !args.rarity || args.rarity === "All" ||
-        card.rarityName === args.rarity;
-      
-      return matchesSearch && matchesCategory && matchesCollection && matchesType && matchesRarity;
-    });
-    
     // Sort
     const sortBy = args.sortBy || "ID";
     const sortDir = args.sortDir || "ASC";
-    filtered.sort((a, b) => {
-      let comparison = 0;
+    enriched.sort((a, b) => {
+      let cmp = 0;
       switch (sortBy) {
-        case "NAME":
-          comparison = a.name.localeCompare(b.name);
-          break;
-        case "TYPE":
-          comparison = a.type.localeCompare(b.type);
-          break;
-        case "RARITY":
-          comparison = a.rarityOrder - b.rarityOrder;
-          break;
-        case "ID":
+        case "NAME": cmp = a.name.localeCompare(b.name); break;
+        case "TYPE": cmp = a.type.localeCompare(b.type); break;
+        case "RARITY": cmp = a.rarityOrder - b.rarityOrder; break;
         default:
-          // Sort theo setCode (giảm - set mới lên trước), rồi số thẻ (tăng)
-          comparison = b.setCode.localeCompare(a.setCode);
-          if (comparison === 0) {
-            const numA = parseInt(a.cardNumber) || 0;
-            const numB = parseInt(b.cardNumber) || 0;
-            comparison = numA - numB;
-          }
-          break;
+          cmp = b.setCode.localeCompare(a.setCode);
+          if (cmp === 0) cmp = (parseInt(a.cardNumber) || 0) - (parseInt(b.cardNumber) || 0);
       }
-      return sortDir === "ASC" ? comparison : -comparison;
+      return sortDir === "ASC" ? cmp : -cmp;
     });
     
-    // Paginate - support both cursor and page-based
-    let startIndex = 0;
-    if (args.cursor) {
-      const cursorIndex = filtered.findIndex(c => c._id === args.cursor);
-      if (cursorIndex !== -1) startIndex = cursorIndex + 1;
-    } else if (args.page) {
-      startIndex = (args.page - 1) * args.limit;
-    }
+    // Paginate
+    const page = args.page || 1;
+    const startIndex = (page - 1) * args.limit;
+    const items = enriched.slice(startIndex, startIndex + args.limit);
+    const totalPages = Math.ceil(enriched.length / args.limit);
     
-    const cards = filtered.slice(startIndex, startIndex + args.limit);
-    const totalPages = Math.ceil(filtered.length / args.limit);
-    const currentPage = args.page || Math.floor(startIndex / args.limit) + 1;
-    const hasMore = startIndex + args.limit < filtered.length;
-    const nextCursor = cards.length > 0 ? cards[cards.length - 1]._id : undefined;
+    // Return filter options from metadata (already loaded)
+    const collections = [...new Set(sets.map(s => s.name))].sort();
+    const rarityNames = rarities.map(r => r.name).sort((a, b) => (RARITY_ORDER[a] || 0) - (RARITY_ORDER[b] || 0));
     
-    // Get unique values for filter dropdowns
-    const collections = [...new Set(enrichedCards.map(c => c.setName || c.packName).filter(Boolean))].sort();
-    const rarityNames = [...new Set(enrichedCards.map(c => c.rarityName).filter(Boolean))];
-    rarityNames.sort((a, b) => (RARITY_ORDER[a] || 0) - (RARITY_ORDER[b] || 0));
+    return { 
+      items, 
+      total: enriched.length, 
+      totalPages, 
+      currentPage: page,
+      collections, 
+      rarities: rarityNames 
+    };
+  },
+});
+
+// ============ ADMIN: Fetch all cards (admin ít dùng, OK) ============
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    // Admin cần xem tất cả cards - chỉ gọi khi vào admin panel
+    const [cards, rarities, packs, sets] = await Promise.all([
+      ctx.db.query("cards").collect(),
+      ctx.db.query("rarities").collect(),
+      ctx.db.query("packs").collect(),
+      ctx.db.query("sets").collect(),
+    ]);
     
-    return { items: cards, total: filtered.length, totalPages, currentPage, hasMore, nextCursor, collections, rarities: rarityNames };
+    const rarityMap = new Map(rarities.map(r => [r._id, r]));
+    const packMap = new Map(packs.map(p => [p._id, p]));
+    const setMap = new Map(sets.map(s => [s._id, s]));
+    
+    return cards.map(card => {
+      const rarity = rarityMap.get(card.rarityId);
+      const pack = packMap.get(card.packId);
+      const set = pack ? setMap.get(pack.setId) : undefined;
+      return {
+        ...card,
+        rarityName: rarity?.name || "",
+        rarityImageUrl: rarity?.imageUrl || "",
+        packName: pack?.name || "",
+        setName: set?.name || "",
+        setCode: set?.setCode || "",
+      };
+    });
   },
 });
 
@@ -219,5 +303,60 @@ export const bulkRemove = mutation({
       await ctx.db.delete(id);
     }
     return { deleted: args.ids.length };
+  },
+});
+
+// ============ ADMIN: Lấy cards theo pack name (để debug/fix data) ============
+export const listByPackName = query({
+  args: { packName: v.string() },
+  handler: async (ctx, args) => {
+    const packs = await ctx.db.query("packs").collect();
+    const pack = packs.find(p => p.name === args.packName);
+    if (!pack) return { error: `Pack "${args.packName}" không tồn tại`, cards: [] };
+    
+    const cards = await ctx.db.query("cards")
+      .withIndex("by_pack", q => q.eq("packId", pack._id))
+      .collect();
+    
+    const rarities = await ctx.db.query("rarities").collect();
+    const rarityMap = new Map(rarities.map(r => [r._id, r.name]));
+    
+    return {
+      packId: pack._id,
+      packName: pack.name,
+      totalCards: cards.length,
+      cards: cards.map(c => ({
+        _id: c._id,
+        name: c.name,
+        type: c.type,
+        rarityName: rarityMap.get(c.rarityId) || "",
+        cardNumber: c.cardNumber,
+      })),
+    };
+  },
+});
+
+// ============ ADMIN: Bulk update cards (fix type/rarity) ============
+export const bulkUpdateCards = mutation({
+  args: {
+    updates: v.array(v.object({
+      id: v.id("cards"),
+      type: v.optional(v.string()),
+      rarityId: v.optional(v.id("rarities")),
+    })),
+  },
+  handler: async (ctx, args) => {
+    let updated = 0;
+    for (const item of args.updates) {
+      const updateData: { type?: string; rarityId?: Id<"rarities"> } = {};
+      if (item.type !== undefined) updateData.type = item.type;
+      if (item.rarityId !== undefined) updateData.rarityId = item.rarityId;
+      
+      if (Object.keys(updateData).length > 0) {
+        await ctx.db.patch(item.id, updateData);
+        updated++;
+      }
+    }
+    return { updated };
   },
 });

@@ -33,11 +33,19 @@ export default function CardsPage() {
   const [search, setSearch] = useState('');
   const [filterSupertype, setFilterSupertype] = useState('');
   const [filterType, setFilterType] = useState('');
+  const [filterSet, setFilterSet] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize>(20);
   const [selectedIds, setSelectedIds] = useState<Set<CardId>>(new Set());
+
+  // Lấy danh sách sets unique từ cards
+  const sets = useMemo(() => {
+    if (!cards) return [];
+    const setNames = [...new Set(cards.map(c => c.setName).filter(Boolean))];
+    return setNames.sort();
+  }, [cards]);
 
   const filteredAndSorted = useMemo(() => {
     if (!cards) return [];
@@ -45,8 +53,9 @@ export default function CardsPage() {
       const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
                           c.cardNumber.toLowerCase().includes(search.toLowerCase());
       const matchSupertype = !filterSupertype || c.supertype === filterSupertype;
-      const matchType = !filterType || c.type === filterType;
-      return matchSearch && matchSupertype && matchType;
+      const matchType = !filterType || (filterType === '__empty__' ? !c.type : c.type === filterType);
+      const matchSet = !filterSet || c.setName === filterSet;
+      return matchSearch && matchSupertype && matchType && matchSet;
     });
     result.sort((a, b) => {
       let aVal = a[sortField]?.toLowerCase() || '';
@@ -56,7 +65,7 @@ export default function CardsPage() {
       return 0;
     });
     return result;
-  }, [cards, search, filterSupertype, filterType, sortField, sortDir]);
+  }, [cards, search, filterSupertype, filterType, filterSet, sortField, sortDir]);
 
   const totalItems = filteredAndSorted.length;
   const totalPages = pageSize === 'all' ? 1 : Math.ceil(totalItems / pageSize);
@@ -149,7 +158,16 @@ export default function CardsPage() {
             className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
           >
             <option value="">Tất cả type</option>
+            <option value="__empty__">Không có</option>
             {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <select 
+            value={filterSet}
+            onChange={(e) => { setFilterSet(e.target.value); setCurrentPage(1); }}
+            className="h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
+          >
+            <option value="">Tất cả set</option>
+            {sets.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           {selectedIds.size > 0 && (
             <button
@@ -199,7 +217,7 @@ export default function CardsPage() {
               ) : filteredAndSorted.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
-                    {search || filterSupertype || filterType ? 'Không tìm thấy thẻ nào' : 'Chưa có thẻ nào'}
+                    {search || filterSupertype || filterType || filterSet ? 'Không tìm thấy thẻ nào' : 'Chưa có thẻ nào'}
                   </td>
                 </tr>
               ) : paginatedData.map((card) => (
