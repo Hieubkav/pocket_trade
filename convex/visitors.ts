@@ -12,10 +12,11 @@ const parseDevice = (userAgent: string): string => {
 // Parse OS from userAgent
 const parseOS = (userAgent: string): string => {
   const ua = userAgent.toLowerCase();
+  // Check iOS BEFORE macOS vì iPhone UA chứa cả "Mac OS"
+  if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ipod")) return "iOS";
+  if (ua.includes("android")) return "Android";
   if (ua.includes("windows")) return "Windows";
   if (ua.includes("mac os") || ua.includes("macos")) return "macOS";
-  if (ua.includes("iphone") || ua.includes("ipad")) return "iOS";
-  if (ua.includes("android")) return "Android";
   if (ua.includes("linux")) return "Linux";
   return "Khác";
 };
