@@ -4,6 +4,7 @@ import "../globals.css";
 import NavigationWrapper from "../components/NavigationWrapper";
 import { ConvexClientProvider } from "../ConvexClientProvider";
 import { TraderAuthProvider } from "../contexts/TraderAuthContext";
+import VisitorTracker from "../components/VisitorTracker";
 import { getSettings } from "../lib/getSettings";
 
 const geistSans = Geist({
@@ -49,6 +50,7 @@ export default function SiteLayout({
       >
         <ConvexClientProvider>
           <TraderAuthProvider>
+            <VisitorTracker />
             <NavigationWrapper>{children}</NavigationWrapper>
           </TraderAuthProvider>
         </ConvexClientProvider>

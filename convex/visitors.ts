@@ -1,5 +1,49 @@
-import { query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+
+// Parse device from userAgent
+const parseDevice = (userAgent: string): string => {
+  const ua = userAgent.toLowerCase();
+  if (/tablet|ipad|playbook|silk/.test(ua)) return "tablet";
+  if (/mobile|iphone|ipod|android.*mobile|windows phone/.test(ua)) return "mobile";
+  return "desktop";
+};
+
+// Parse OS from userAgent
+const parseOS = (userAgent: string): string => {
+  const ua = userAgent.toLowerCase();
+  if (ua.includes("windows")) return "Windows";
+  if (ua.includes("mac os") || ua.includes("macos")) return "macOS";
+  if (ua.includes("iphone") || ua.includes("ipad")) return "iOS";
+  if (ua.includes("android")) return "Android";
+  if (ua.includes("linux")) return "Linux";
+  return "Khác";
+};
+
+export const trackVisitor = mutation({
+  args: {
+    ipAddress: v.string(),
+    userAgent: v.string(),
+    pageUrl: v.string(),
+    referrer: v.optional(v.string()),
+    country: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const device = parseDevice(args.userAgent);
+    const os = parseOS(args.userAgent);
+
+    await ctx.db.insert("visitors", {
+      ipAddress: args.ipAddress,
+      userAgent: args.userAgent,
+      pageUrl: args.pageUrl,
+      referrer: args.referrer,
+      country: args.country,
+      device,
+      os,
+      visitedAt: Date.now(),
+    });
+  },
+});
 
 const getTimeRangeStart = (range: string): number => {
   const now = Date.now();
