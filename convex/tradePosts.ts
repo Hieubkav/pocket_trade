@@ -123,13 +123,14 @@ export const listPaginated = query({
     sortDir: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // ============ Step 1: Query tradePosts với index ============
-    // Use index for status or trader filter
+    // ============ Step 1: Query tradePosts với index + limit ============
+    const MAX_POSTS = 500; // Giới hạn để tránh quá tải bandwidth
+    
     const tradePosts = args.status
-      ? await ctx.db.query("tradePosts").withIndex("by_status", q => q.eq("status", args.status!)).collect()
+      ? await ctx.db.query("tradePosts").withIndex("by_status", q => q.eq("status", args.status!)).take(MAX_POSTS)
       : args.traderId
-        ? await ctx.db.query("tradePosts").withIndex("by_trader", q => q.eq("traderId", args.traderId!)).collect()
-        : await ctx.db.query("tradePosts").collect();
+        ? await ctx.db.query("tradePosts").withIndex("by_trader", q => q.eq("traderId", args.traderId!)).take(MAX_POSTS)
+        : await ctx.db.query("tradePosts").order("desc").take(MAX_POSTS);
     
     // Early filter by simple conditions
     let filteredPosts = tradePosts.filter(post => {
@@ -442,14 +443,11 @@ export const listByCard = query({
   handler: async (ctx, args) => {
     const limit = args.limit ?? 20;
     
-    // Dùng index thay vì filter (cần thêm index by_card_type vào schema)
-    const tradePostCards = await ctx.db
+    // Dùng compound index by_card_type
+    const filteredPostCards = await ctx.db
       .query("tradePostCards")
-      .withIndex("by_card", q => q.eq("cardId", args.cardId))
+      .withIndex("by_card_type", q => q.eq("cardId", args.cardId).eq("type", args.type))
       .collect();
-    
-    // Filter by type trong JS (nhỏ hơn nhiều so với fetch ALL)
-    const filteredPostCards = tradePostCards.filter(tpc => tpc.type === args.type);
     const postIds = [...new Set(filteredPostCards.map(tpc => tpc.tradePostId))];
     
     // Get trade posts (chỉ load cần thiết)

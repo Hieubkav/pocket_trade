@@ -80,36 +80,28 @@ export const listPaginated = query({
       }
     }
     
-    // Find packId for type filter
-    let filterTypePackIds: Set<Id<"packs">> | null = null;
-    if (args.cardType && args.cardType !== "All") {
-      // Type filter will be applied in JS
-    }
+
     
-    // ============ STRATEGY: Dùng index phù hợp nhất ============
-    // Priority: rarity > pack > type > all
+    // ============ STRATEGY: Dùng index phù hợp nhất + LIMIT ============
+    const MAX_CARDS = 1000; // Giới hạn để tránh quá tải bandwidth
     let rawCards;
     
     if (filterRarityId) {
-      // Rarity là filter tốt nhất (selective)
       rawCards = await ctx.db.query("cards")
         .withIndex("by_rarity", q => q.eq("rarityId", filterRarityId!))
-        .collect();
+        .take(MAX_CARDS);
     } else if (filterPackIds && filterPackIds.size === 1) {
-      // Single pack filter - dùng index
       const packId = [...filterPackIds][0];
       rawCards = await ctx.db.query("cards")
         .withIndex("by_pack", q => q.eq("packId", packId))
-        .collect();
+        .take(MAX_CARDS);
     } else if (args.cardType && args.cardType !== "All") {
-      // Type filter - dùng index
       rawCards = await ctx.db.query("cards")
         .withIndex("by_type", q => q.eq("type", args.cardType!))
-        .collect();
+        .take(MAX_CARDS);
     } else {
-      // No selective filter - fetch all (unavoidable cho search toàn bộ)
-      // Nhưng nếu có search term, có thể dùng .take() để giới hạn
-      rawCards = await ctx.db.query("cards").collect();
+      // No selective filter - MUST have limit
+      rawCards = await ctx.db.query("cards").take(MAX_CARDS);
     }
     
     // Apply remaining filters in JS

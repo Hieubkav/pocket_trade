@@ -93,7 +93,9 @@ export default defineSchema({
     status: v.string(), // pending, accepted, declined
   })
     .index("by_trade_post", ["tradePostId"])
-    .index("by_requester", ["requesterId"]),
+    .index("by_requester", ["requesterId"])
+    .index("by_trade_post_status", ["tradePostId", "status"])
+    .index("by_requester_status", ["requesterId", "status"]),
 
   // 10. Trade-post-Card (Pivot)
   tradePostCards: defineTable({
@@ -102,7 +104,8 @@ export default defineSchema({
     type: v.string(), // "have" | "want"
   })
     .index("by_trade_post", ["tradePostId"])
-    .index("by_card", ["cardId"]),
+    .index("by_card", ["cardId"])
+    .index("by_card_type", ["cardId", "type"]),
 
   // 11. Chat
   chats: defineTable({

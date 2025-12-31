@@ -4,7 +4,8 @@ import { query, mutation } from "./_generated/server";
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("posts").order("desc").collect();
+    // Giới hạn 100 posts để tránh quá tải bandwidth
+    return await ctx.db.query("posts").order("desc").take(100);
   },
 });
 

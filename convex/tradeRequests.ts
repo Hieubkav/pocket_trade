@@ -1,14 +1,15 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
-// Đếm số request pending cho một trade post
+// Đếm số request pending cho một trade post - OPTIMIZED với compound index
 export const countPendingByPost = query({
   args: { tradePostId: v.id("tradePosts") },
   handler: async (ctx, args) => {
     const requests = await ctx.db
       .query("tradeRequests")
-      .withIndex("by_trade_post", q => q.eq("tradePostId", args.tradePostId))
-      .filter(q => q.eq(q.field("status"), "pending"))
+      .withIndex("by_trade_post_status", q => 
+        q.eq("tradePostId", args.tradePostId).eq("status", "pending")
+      )
       .collect();
     return requests.length;
   },
@@ -195,12 +196,13 @@ export const create = mutation({
       throw new Error("Bạn không thể gửi request cho bài đăng của chính mình");
     }
     
-    // Check if already sent a request to this post
+    // Check if already sent a request to this post - dùng compound index
     const existingRequest = await ctx.db
       .query("tradeRequests")
-      .withIndex("by_trade_post", q => q.eq("tradePostId", args.tradePostId))
+      .withIndex("by_trade_post_status", q => 
+        q.eq("tradePostId", args.tradePostId).eq("status", "pending")
+      )
       .filter(q => q.eq(q.field("requesterId"), args.requesterId))
-      .filter(q => q.eq(q.field("status"), "pending"))
       .first();
     
     if (existingRequest) {

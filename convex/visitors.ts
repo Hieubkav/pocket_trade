@@ -12,13 +12,33 @@ const parseDevice = (userAgent: string): string => {
 // Parse OS from userAgent
 const parseOS = (userAgent: string): string => {
   const ua = userAgent.toLowerCase();
-  // Check iOS BEFORE macOS vì iPhone UA chứa cả "Mac OS"
   if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ipod")) return "iOS";
   if (ua.includes("android")) return "Android";
   if (ua.includes("windows")) return "Windows";
   if (ua.includes("mac os") || ua.includes("macos")) return "macOS";
   if (ua.includes("linux")) return "Linux";
   return "Khác";
+};
+
+const getTimeRanges = (range: string) => {
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  let duration: number;
+  
+  switch (range) {
+    case "today": duration = day; break;
+    case "week": duration = 7 * day; break;
+    case "month": duration = 30 * day; break;
+    case "3months": duration = 90 * day; break;
+    case "year": duration = 365 * day; break;
+    default: duration = 0;
+  }
+  
+  return {
+    currentStart: duration ? now - duration : 0,
+    previousStart: duration ? now - duration * 2 : 0,
+    previousEnd: duration ? now - duration : 0,
+  };
 };
 
 export const trackVisitor = mutation({
@@ -46,37 +66,23 @@ export const trackVisitor = mutation({
   },
 });
 
-const getTimeRangeStart = (range: string): number => {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  
-  switch (range) {
-    case "today":
-      return now - day;
-    case "week":
-      return now - 7 * day;
-    case "month":
-      return now - 30 * day;
-    case "3months":
-      return now - 90 * day;
-    case "year":
-      return now - 365 * day;
-    case "all":
-    default:
-      return 0;
-  }
-};
-
+// ============ OPTIMIZED: Dùng index range query thay vì collect all ============
 export const getStats = query({
   args: { timeRange: v.string() },
   handler: async (ctx, args) => {
-    const startTime = getTimeRangeStart(args.timeRange);
-    const previousStartTime = getTimeRangeStart(args.timeRange) - (Date.now() - getTimeRangeStart(args.timeRange));
+    const { currentStart, previousStart, previousEnd } = getTimeRanges(args.timeRange);
     
-    const allVisitors = await ctx.db.query("visitors").collect();
-    
-    const currentVisitors = allVisitors.filter(v => v.visitedAt >= startTime);
-    const previousVisitors = allVisitors.filter(v => v.visitedAt >= previousStartTime && v.visitedAt < startTime);
+    // Dùng index để chỉ lấy visitors trong khoảng thời gian cần thiết
+    const [currentVisitors, previousVisitors] = await Promise.all([
+      ctx.db.query("visitors")
+        .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
+        .collect(),
+      currentStart > 0 
+        ? ctx.db.query("visitors")
+            .withIndex("by_visited_at", q => q.gte("visitedAt", previousStart).lt("visitedAt", previousEnd))
+            .collect()
+        : [],
+    ]);
     
     const uniqueCurrentIPs = new Set(currentVisitors.map(v => v.ipAddress)).size;
     const uniquePreviousIPs = new Set(previousVisitors.map(v => v.ipAddress)).size;
@@ -100,13 +106,16 @@ export const getStats = query({
 export const getChartData = query({
   args: { timeRange: v.string() },
   handler: async (ctx, args) => {
-    const startTime = getTimeRangeStart(args.timeRange);
-    const visitors = await ctx.db.query("visitors").collect();
-    const filtered = visitors.filter(v => v.visitedAt >= startTime);
+    const { currentStart } = getTimeRanges(args.timeRange);
+    
+    // Dùng index range query
+    const visitors = await ctx.db.query("visitors")
+      .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
+      .collect();
     
     const grouped: Record<string, number> = {};
     
-    filtered.forEach(visitor => {
+    visitors.forEach(visitor => {
       const date = new Date(visitor.visitedAt);
       let key: string;
       
@@ -139,12 +148,14 @@ export const getChartData = query({
 export const getTopPages = query({
   args: { timeRange: v.string() },
   handler: async (ctx, args) => {
-    const startTime = getTimeRangeStart(args.timeRange);
-    const visitors = await ctx.db.query("visitors").collect();
-    const filtered = visitors.filter(v => v.visitedAt >= startTime);
+    const { currentStart } = getTimeRanges(args.timeRange);
+    
+    const visitors = await ctx.db.query("visitors")
+      .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
+      .collect();
     
     const grouped: Record<string, number> = {};
-    filtered.forEach(v => {
+    visitors.forEach(v => {
       const path = new URL(v.pageUrl, "http://localhost").pathname;
       grouped[path] = (grouped[path] || 0) + 1;
     });
@@ -159,12 +170,14 @@ export const getTopPages = query({
 export const getTopReferrers = query({
   args: { timeRange: v.string() },
   handler: async (ctx, args) => {
-    const startTime = getTimeRangeStart(args.timeRange);
-    const visitors = await ctx.db.query("visitors").collect();
-    const filtered = visitors.filter(v => v.visitedAt >= startTime);
+    const { currentStart } = getTimeRanges(args.timeRange);
+    
+    const visitors = await ctx.db.query("visitors")
+      .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
+      .collect();
     
     const grouped: Record<string, number> = {};
-    filtered.forEach(v => {
+    visitors.forEach(v => {
       const source = v.referrer 
         ? new URL(v.referrer).hostname 
         : "Trực tiếp";
@@ -181,17 +194,19 @@ export const getTopReferrers = query({
 export const getCountryStats = query({
   args: { timeRange: v.string() },
   handler: async (ctx, args) => {
-    const startTime = getTimeRangeStart(args.timeRange);
-    const visitors = await ctx.db.query("visitors").collect();
-    const filtered = visitors.filter(v => v.visitedAt >= startTime);
+    const { currentStart } = getTimeRanges(args.timeRange);
+    
+    const visitors = await ctx.db.query("visitors")
+      .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
+      .collect();
     
     const grouped: Record<string, number> = {};
-    filtered.forEach(v => {
+    visitors.forEach(v => {
       const country = v.country || "Không xác định";
       grouped[country] = (grouped[country] || 0) + 1;
     });
 
-    const total = filtered.length;
+    const total = visitors.length;
     const countryFlags: Record<string, string> = {
       "Việt Nam": "🇻🇳",
       "Indonesia": "🇮🇩",
@@ -215,17 +230,19 @@ export const getCountryStats = query({
 export const getDeviceStats = query({
   args: { timeRange: v.string() },
   handler: async (ctx, args) => {
-    const startTime = getTimeRangeStart(args.timeRange);
-    const visitors = await ctx.db.query("visitors").collect();
-    const filtered = visitors.filter(v => v.visitedAt >= startTime);
+    const { currentStart } = getTimeRanges(args.timeRange);
+    
+    const visitors = await ctx.db.query("visitors")
+      .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
+      .collect();
     
     const grouped: Record<string, number> = {};
-    filtered.forEach(v => {
+    visitors.forEach(v => {
       const device = v.device || "Không xác định";
       grouped[device] = (grouped[device] || 0) + 1;
     });
 
-    const total = filtered.length;
+    const total = visitors.length;
     const deviceLabels: Record<string, string> = {
       mobile: "Di động",
       desktop: "Máy tính",
@@ -244,17 +261,19 @@ export const getDeviceStats = query({
 export const getOsStats = query({
   args: { timeRange: v.string() },
   handler: async (ctx, args) => {
-    const startTime = getTimeRangeStart(args.timeRange);
-    const visitors = await ctx.db.query("visitors").collect();
-    const filtered = visitors.filter(v => v.visitedAt >= startTime);
+    const { currentStart } = getTimeRanges(args.timeRange);
+    
+    const visitors = await ctx.db.query("visitors")
+      .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
+      .collect();
     
     const grouped: Record<string, number> = {};
-    filtered.forEach(v => {
+    visitors.forEach(v => {
       const os = v.os || "Không xác định";
       grouped[os] = (grouped[os] || 0) + 1;
     });
 
-    const total = filtered.length;
+    const total = visitors.length;
 
     return Object.entries(grouped)
       .map(([name, count]) => ({

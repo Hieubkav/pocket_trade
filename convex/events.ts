@@ -4,7 +4,8 @@ import { query, mutation } from "./_generated/server";
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("events").collect();
+    // Giới hạn 50 events để tránh quá tải bandwidth
+    return await ctx.db.query("events").order("desc").take(50);
   },
 });
 
