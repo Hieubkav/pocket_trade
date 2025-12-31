@@ -48,7 +48,7 @@ export default function EditCardPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !cardNumber.trim() || !rarityId || !supertype || !subtype || !type || !packId || !imageUrl.trim()) return;
+    if (!name.trim() || !cardNumber.trim() || !rarityId || !supertype || !subtype || !packId || !imageUrl.trim()) return;
 
     setIsLoading(true);
     try {
@@ -187,15 +187,14 @@ export default function EditCardPage() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                Type
+                Type <span className="text-slate-400 font-normal">(bỏ trống nếu Trainer)</span>
               </label>
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value)}
                 className="w-full h-10 px-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 dark:text-slate-200"
-                required
               >
-                <option value="">Chọn type</option>
+                <option value="">Không có</option>
                 <option value="Grass">Grass</option>
                 <option value="Fire">Fire</option>
                 <option value="Water">Water</option>

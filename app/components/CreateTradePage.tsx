@@ -70,12 +70,12 @@ const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) 
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Reset page when filters change
+  // Reset page when filters change (including locked rarity)
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedSet, selectedRarity, sortBy, sortDir]);
+  }, [selectedSet, selectedRarity, sortBy, sortDir, currentRarity]);
 
-  // Query cards
+  // Query cards - prioritize currentRarity (locked rarity) over selectedRarity
   const cardsResult = useQuery(
     api.cards.listPaginated,
     selectingFor ? {
@@ -83,7 +83,7 @@ const CreateTradePage: React.FC<CreateTradePageProps> = ({ onBack, onSuccess }) 
       page: currentPage,
       search: debouncedSearch || undefined,
       collection: selectedSet !== 'All' ? selectedSet : undefined,
-      rarity: selectedRarity !== 'All' ? selectedRarity : undefined,
+      rarity: currentRarity || (selectedRarity !== 'All' ? selectedRarity : undefined),
       sortBy,
       sortDir,
     } : 'skip'

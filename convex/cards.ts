@@ -177,13 +177,13 @@ export const create = mutation({
     rarityId: v.id("rarities"),
     supertype: v.string(),
     subtype: v.string(),
-    type: v.string(),
+    type: v.optional(v.string()),
     packId: v.id("packs"),
     cardNumber: v.string(),
     imageUrl: v.string(),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("cards", args);
+    return await ctx.db.insert("cards", { ...args, type: args.type || "" });
   },
 });
 
@@ -194,14 +194,14 @@ export const update = mutation({
     rarityId: v.id("rarities"),
     supertype: v.string(),
     subtype: v.string(),
-    type: v.string(),
+    type: v.optional(v.string()),
     packId: v.id("packs"),
     cardNumber: v.string(),
     imageUrl: v.string(),
   },
   handler: async (ctx, args) => {
     const { id, ...data } = args;
-    await ctx.db.patch(id, data);
+    await ctx.db.patch(id, { ...data, type: data.type || "" });
   },
 });
 
