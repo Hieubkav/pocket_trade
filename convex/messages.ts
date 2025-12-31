@@ -82,31 +82,33 @@ export const markAsRead = mutation({
   },
 });
 
-// Đếm unread messages
+// ============ OPTIMIZED: Batch load messages thay vì N+1 ============
 export const countUnread = query({
   args: { traderId: v.id("traders") },
   handler: async (ctx, args) => {
     // Lấy tất cả chats của trader
-    const asHost = await ctx.db
-      .query("chats")
-      .withIndex("by_host", (q) => q.eq("traderHostId", args.traderId))
-      .collect();
-
-    const asGuest = await ctx.db
-      .query("chats")
-      .withIndex("by_guest", (q) => q.eq("traderGuestId", args.traderId))
-      .collect();
+    const [asHost, asGuest] = await Promise.all([
+      ctx.db.query("chats").withIndex("by_host", (q) => q.eq("traderHostId", args.traderId)).collect(),
+      ctx.db.query("chats").withIndex("by_guest", (q) => q.eq("traderGuestId", args.traderId)).collect(),
+    ]);
 
     const allChats = [...asHost, ...asGuest];
     const uniqueChatIds = [...new Set(allChats.map((c) => c._id))];
 
-    let totalUnread = 0;
-    for (const chatId of uniqueChatIds) {
-      const messages = await ctx.db
-        .query("messages")
-        .withIndex("by_chat", (q) => q.eq("chatId", chatId))
-        .collect();
+    if (uniqueChatIds.length === 0) return 0;
 
+    // BATCH LOAD: Lấy messages của TẤT CẢ chats cùng lúc
+    const messagesArrays = await Promise.all(
+      uniqueChatIds.map(chatId =>
+        ctx.db.query("messages")
+          .withIndex("by_chat", (q) => q.eq("chatId", chatId))
+          .collect()
+      )
+    );
+
+    // Đếm unread từ tất cả messages
+    let totalUnread = 0;
+    for (const messages of messagesArrays) {
       totalUnread += messages.filter(
         (m) => !m.isRead && m.senderId !== args.traderId
       ).length;

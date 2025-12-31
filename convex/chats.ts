@@ -37,70 +37,69 @@ export const listByTrader = query({
     const cards = await Promise.all(cardIds.map(id => ctx.db.get(id)));
     const cardMap = new Map(cards.filter(Boolean).map(c => [c!._id, c!]));
 
-    const chatsWithDetails = await Promise.all(
-      uniqueChats.map(async (chat) => {
-        // Lấy last message
-        const messages = await ctx.db
-          .query("messages")
-          .withIndex("by_chat", (q) => q.eq("chatId", chat._id))
+    // ============ OPTIMIZED: Batch load messages cho tất cả chats ============
+    const chatIds = uniqueChats.map(c => c._id);
+    const messagesArrays = await Promise.all(
+      chatIds.map(chatId =>
+        ctx.db.query("messages")
+          .withIndex("by_chat", (q) => q.eq("chatId", chatId))
           .order("desc")
-          .take(1);
-        const lastMessage = messages[0];
-
-        // Đếm unread messages
-        const allMessages = await ctx.db
-          .query("messages")
-          .withIndex("by_chat", (q) => q.eq("chatId", chat._id))
-          .collect();
-        const unreadCount = allMessages.filter(
-          (m) => !m.isRead && m.senderId !== args.traderId
-        ).length;
-
-        // Lấy thông tin partner
-        const partnerId = chat.traderHostId === args.traderId ? chat.traderGuestId : chat.traderHostId;
-        const partner = partnerMap.get(partnerId);
-
-        // Lấy thông tin trade request và cards
-        const request = requestMap.get(chat.tradeRequestId);
-        const offeredCard = request ? cardMap.get(request.offeredCardId) : null;
-        const requestedCard = request ? cardMap.get(request.requestedCardId) : null;
-
-        return {
-          _id: chat._id,
-          tradePostId: chat.tradePostId,
-          tradeRequestId: chat.tradeRequestId,
-          status: chat.status,
-          _creationTime: chat._creationTime,
-          partner: partner
-            ? {
-                _id: partner._id,
-                name: partner.name,
-                avatarUrl: partner.avatarUrl,
-                friendCode: partner.friendCode,
-                isOnline: partner.isOnline,
-                tradePoint: partner.tradePoint ?? 0,
-              }
-            : null,
-          lastMessage: lastMessage
-            ? {
-                content: lastMessage.content,
-                contentType: lastMessage.contentType,
-                senderId: lastMessage.senderId,
-                _creationTime: lastMessage._creationTime,
-              }
-            : null,
-          unreadCount,
-          tradePreview: {
-            offeredCard: offeredCard
-              ? { name: offeredCard.name, imageUrl: offeredCard.imageUrl }
-              : null,
-            requestedCard: requestedCard
-              ? { name: requestedCard.name, imageUrl: requestedCard.imageUrl }
-              : null,
-          },
-        };
-      })
+          .collect()
+      )
     );
+    const messagesMap = new Map(chatIds.map((id, i) => [id, messagesArrays[i]]));
+
+    const chatsWithDetails = uniqueChats.map((chat) => {
+      const messages = messagesMap.get(chat._id) || [];
+      const lastMessage = messages[0];
+      const unreadCount = messages.filter(
+        (m) => !m.isRead && m.senderId !== args.traderId
+      ).length;
+
+      // Lấy thông tin partner
+      const partnerId = chat.traderHostId === args.traderId ? chat.traderGuestId : chat.traderHostId;
+      const partner = partnerMap.get(partnerId);
+
+      // Lấy thông tin trade request và cards
+      const request = requestMap.get(chat.tradeRequestId);
+      const offeredCard = request ? cardMap.get(request.offeredCardId) : null;
+      const requestedCard = request ? cardMap.get(request.requestedCardId) : null;
+
+      return {
+        _id: chat._id,
+        tradePostId: chat.tradePostId,
+        tradeRequestId: chat.tradeRequestId,
+        status: chat.status,
+        _creationTime: chat._creationTime,
+        partner: partner
+          ? {
+              _id: partner._id,
+              name: partner.name,
+              avatarUrl: partner.avatarUrl,
+              friendCode: partner.friendCode,
+              isOnline: partner.isOnline,
+              tradePoint: partner.tradePoint ?? 0,
+            }
+          : null,
+        lastMessage: lastMessage
+          ? {
+              content: lastMessage.content,
+              contentType: lastMessage.contentType,
+              senderId: lastMessage.senderId,
+              _creationTime: lastMessage._creationTime,
+            }
+          : null,
+        unreadCount,
+        tradePreview: {
+          offeredCard: offeredCard
+            ? { name: offeredCard.name, imageUrl: offeredCard.imageUrl }
+            : null,
+          requestedCard: requestedCard
+            ? { name: requestedCard.name, imageUrl: requestedCard.imageUrl }
+            : null,
+        },
+      };
+    });
 
     // Sort by last message time
     return chatsWithDetails.sort((a, b) => {

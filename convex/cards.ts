@@ -187,13 +187,13 @@ export const listPaginated = query({
   },
 });
 
-// ============ ADMIN: Fetch all cards (admin ít dùng, OK) ============
+// ============ ADMIN: Giới hạn 2000 cards để tránh bandwidth khổng lồ ============
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    // Admin cần xem tất cả cards - chỉ gọi khi vào admin panel
+    // Admin cần xem cards - GIỚI HẠN 2000 để tránh quá tải
     const [cards, rarities, packs, sets] = await Promise.all([
-      ctx.db.query("cards").collect(),
+      ctx.db.query("cards").take(2000), // LIMIT!
       ctx.db.query("rarities").collect(),
       ctx.db.query("packs").collect(),
       ctx.db.query("sets").collect(),

@@ -1,25 +1,24 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
+// ============ OPTIMIZED: Dùng cached counts thay vì fetch ALL cards ============
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const sets = await ctx.db.query("sets").collect();
-    const series = await ctx.db.query("series").collect();
-    const packs = await ctx.db.query("packs").collect();
-    const cards = await ctx.db.query("cards").collect();
+    const [sets, series] = await Promise.all([
+      ctx.db.query("sets").collect(),
+      ctx.db.query("series").collect(),
+    ]);
+    
+    const seriesMap = new Map(series.map(s => [s._id, s]));
     
     return sets.map(set => {
-      const seriesItem = series.find(s => s._id === set.seriesId);
-      const setPacks = packs.filter(p => p.setId === set._id);
-      const setPackIds = setPacks.map(p => p._id);
-      const cardCount = cards.filter(c => setPackIds.includes(c.packId)).length;
-      
+      const seriesItem = seriesMap.get(set.seriesId);
       return {
         ...set,
         seriesName: seriesItem?.name || "",
-        packCount: setPacks.length,
-        cardCount,
+        packCount: set.packCount ?? 0, // Dùng cached count
+        cardCount: set.cardCount ?? 0, // Dùng cached count
       };
     });
   },
@@ -72,5 +71,60 @@ export const bulkRemove = mutation({
       await ctx.db.delete(id);
     }
     return { deleted: args.ids.length };
+  },
+});
+
+// ============ ADMIN: Sync cached counts cho tất cả sets và packs ============
+export const syncCachedCounts = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const [sets, packs, cards] = await Promise.all([
+      ctx.db.query("sets").collect(),
+      ctx.db.query("packs").collect(),
+      ctx.db.query("cards").collect(),
+    ]);
+    
+    // Count cards per pack
+    const cardCountByPack = new Map<string, number>();
+    for (const card of cards) {
+      const count = cardCountByPack.get(card.packId) ?? 0;
+      cardCountByPack.set(card.packId, count + 1);
+    }
+    
+    // Update packs với cardCount
+    for (const pack of packs) {
+      const cardCount = cardCountByPack.get(pack._id) ?? 0;
+      if (pack.cardCount !== cardCount) {
+        await ctx.db.patch(pack._id, { cardCount });
+      }
+    }
+    
+    // Count packs và cards per set
+    const packCountBySet = new Map<string, number>();
+    const cardCountBySet = new Map<string, number>();
+    
+    for (const pack of packs) {
+      const pCount = packCountBySet.get(pack.setId) ?? 0;
+      packCountBySet.set(pack.setId, pCount + 1);
+      
+      const cCount = cardCountBySet.get(pack.setId) ?? 0;
+      const packCards = cardCountByPack.get(pack._id) ?? 0;
+      cardCountBySet.set(pack.setId, cCount + packCards);
+    }
+    
+    // Update sets với packCount và cardCount
+    for (const set of sets) {
+      const packCount = packCountBySet.get(set._id) ?? 0;
+      const cardCount = cardCountBySet.get(set._id) ?? 0;
+      if (set.packCount !== packCount || set.cardCount !== cardCount) {
+        await ctx.db.patch(set._id, { packCount, cardCount });
+      }
+    }
+    
+    return { 
+      setsUpdated: sets.length, 
+      packsUpdated: packs.length,
+      totalCards: cards.length,
+    };
   },
 });

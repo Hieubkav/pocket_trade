@@ -74,20 +74,21 @@ export const listOutgoingByTrader = query({
   },
 });
 
-// Đếm số request trong ngày của trader
+// ============ OPTIMIZED: Đếm requests trong ngày - filter sớm hơn ============
 export const countTodayRequests = query({
   args: { traderId: v.id("traders") },
   handler: async (ctx, args) => {
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
 
-    const todayRequests = await ctx.db
+    // Chỉ lấy requests từ đầu ngày, dùng order desc + take để giới hạn
+    const recentRequests = await ctx.db
       .query("tradeRequests")
       .withIndex("by_requester", q => q.eq("requesterId", args.traderId))
-      .collect();
+      .order("desc")
+      .take(100); // Giới hạn - không ai request 100 lần/ngày
 
-    return todayRequests.filter(r => r._creationTime >= startOfDay && r._creationTime <= endOfDay).length;
+    return recentRequests.filter(r => r._creationTime >= startOfDay).length;
   },
 });
 
@@ -215,14 +216,15 @@ export const create = mutation({
     
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
     
-    const todayRequests = await ctx.db
+    // OPTIMIZED: Chỉ lấy recent requests thay vì ALL
+    const recentRequests = await ctx.db
       .query("tradeRequests")
       .withIndex("by_requester", q => q.eq("requesterId", args.requesterId))
-      .collect();
+      .order("desc")
+      .take(100);
     
-    const todayCount = todayRequests.filter(r => r._creationTime >= startOfDay && r._creationTime <= endOfDay).length;
+    const todayCount = recentRequests.filter(r => r._creationTime >= startOfDay).length;
     
     if (todayCount >= maxRequestsPerDay) {
       throw new Error(`Bạn đã đạt giới hạn ${maxRequestsPerDay} request/ngày`);

@@ -2,21 +2,21 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
-// Đếm số bài đăng trong ngày của trader
+// ============ OPTIMIZED: Đếm posts trong ngày - take thay collect ============
 export const countTodayPosts = query({
   args: { traderId: v.id("traders") },
   handler: async (ctx, args) => {
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 1, 0, 0).getTime();
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 0, 0).getTime();
     
-    const posts = await ctx.db
+    // Chỉ lấy recent posts, không ai đăng 50 posts/ngày
+    const recentPosts = await ctx.db
       .query("tradePosts")
       .withIndex("by_trader", q => q.eq("traderId", args.traderId))
-      .collect();
+      .order("desc")
+      .take(50);
     
-    const todayPosts = posts.filter(p => p._creationTime >= startOfDay && p._creationTime <= endOfDay);
-    return todayPosts.length;
+    return recentPosts.filter(p => p._creationTime >= startOfDay).length;
   },
 });
 
@@ -380,17 +380,17 @@ export const create = mutation({
     
     const tradeRarity = uniqueRarities[0] || "";
     
-    // Check daily limit
+    // Check daily limit - OPTIMIZED: take thay collect
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 1, 0, 0).getTime();
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 0, 0).getTime();
     
-    const todayPosts = await ctx.db
+    const recentPosts = await ctx.db
       .query("tradePosts")
       .withIndex("by_trader", q => q.eq("traderId", args.traderId))
-      .collect();
+      .order("desc")
+      .take(50);
     
-    const todayCount = todayPosts.filter(p => p._creationTime >= startOfDay && p._creationTime <= endOfDay).length;
+    const todayCount = recentPosts.filter(p => p._creationTime >= startOfDay).length;
     const maxPosts = settings?.limitTradePostPerTrader ?? 5;
     
     if (todayCount >= maxPosts) {

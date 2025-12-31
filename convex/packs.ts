@@ -1,21 +1,23 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
+// ============ OPTIMIZED: Dùng cached cardCount thay vì fetch ALL cards ============
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const packs = await ctx.db.query("packs").collect();
-    const sets = await ctx.db.query("sets").collect();
-    const cards = await ctx.db.query("cards").collect();
+    const [packs, sets] = await Promise.all([
+      ctx.db.query("packs").collect(),
+      ctx.db.query("sets").collect(),
+    ]);
+    
+    const setMap = new Map(sets.map(s => [s._id, s]));
     
     return packs.map(pack => {
-      const set = sets.find(s => s._id === pack.setId);
-      const cardCount = cards.filter(c => c.packId === pack._id).length;
-      
+      const set = setMap.get(pack.setId);
       return {
         ...pack,
         setName: set?.name || "",
-        cardCount,
+        cardCount: pack.cardCount ?? 0, // Dùng cached count
       };
     });
   },
