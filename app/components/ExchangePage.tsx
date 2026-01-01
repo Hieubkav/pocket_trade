@@ -257,7 +257,7 @@ const ExchangePage: React.FC = () => {
               }`}
             >
               <Filter className="w-3.5 h-3.5" />
-              Lọc
+              {t.common.filter}
               {activeFiltersCount > 0 && (
                 <span className="bg-white text-teal-600 text-[10px] font-bold px-1.5 rounded-full">
                   {activeFiltersCount}
