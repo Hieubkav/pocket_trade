@@ -6,24 +6,9 @@ import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Plus, Clock, ArrowRightLeft, Loader2, Filter, ChevronDown, ChevronLeft, ChevronRight, Search, X, MessageCircle, Check, XCircle, User } from 'lucide-react';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
+import { useLocale } from '../contexts/LocaleContext';
 
 type TabType = 'public-offers' | 'my-offers' | 'my-requests' | 'history';
-
-// Tính rank từ tradePoint
-const getRank = (tradePoint: number) => {
-  if (tradePoint > 1000) return { name: 'Kim Cương', color: 'text-cyan-500', bg: 'bg-cyan-50', icon: '💎' };
-  if (tradePoint > 500) return { name: 'Vàng', color: 'text-yellow-500', bg: 'bg-yellow-50', icon: '🥇' };
-  if (tradePoint > 200) return { name: 'Bạc', color: 'text-slate-400', bg: 'bg-slate-100', icon: '🥈' };
-  if (tradePoint >= 100) return { name: 'Đồng', color: 'text-orange-500', bg: 'bg-orange-50', icon: '🥉' };
-  return { name: 'Sắt', color: 'text-slate-500', bg: 'bg-slate-100', icon: '⚔️' };
-};
-
-const tabs = [
-  { id: 'public-offers' as TabType, label: 'Công khai' },
-  { id: 'my-offers' as TabType, label: 'Của tôi' },
-  { id: 'my-requests' as TabType, label: 'Đã gửi' },
-  { id: 'history' as TabType, label: 'Lịch sử' },
-];
 
 const ITEMS_PER_PAGE = 24;
 
@@ -67,7 +52,24 @@ const CountdownTimer: React.FC<{ expiresAt: number; onExpired?: () => void }> = 
 const ExchangePage: React.FC = () => {
   const router = useRouter();
   const { trader } = useTraderAuth();
+  const { t } = useLocale();
   const [activeTab, setActiveTab] = useState<TabType>('public-offers');
+
+  // Tính rank từ tradePoint
+  const getRank = (tradePoint: number) => {
+    if (tradePoint > 1000) return { name: t.profile.rankDiamond, color: 'text-cyan-500', bg: 'bg-cyan-50', icon: '💎' };
+    if (tradePoint > 500) return { name: t.profile.rankGold, color: 'text-yellow-500', bg: 'bg-yellow-50', icon: '🥇' };
+    if (tradePoint > 200) return { name: t.profile.rankSilver, color: 'text-slate-400', bg: 'bg-slate-100', icon: '🥈' };
+    if (tradePoint >= 100) return { name: t.profile.rankBronze, color: 'text-orange-500', bg: 'bg-orange-50', icon: '🥉' };
+    return { name: t.profile.rankIron, color: 'text-slate-500', bg: 'bg-slate-100', icon: '⚔️' };
+  };
+
+  const tabs = [
+    { id: 'public-offers' as TabType, label: t.trade.public },
+    { id: 'my-offers' as TabType, label: t.trade.mine },
+    { id: 'my-requests' as TabType, label: t.trade.sent },
+    { id: 'history' as TabType, label: t.trade.history },
+  ];
   
   // Filter & Sort states
   const [showFilters, setShowFilters] = useState(false);
@@ -183,17 +185,17 @@ const ExchangePage: React.FC = () => {
     <div className="min-h-screen bg-slate-50 pb-24">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
-        <h1 className="text-lg font-black text-slate-900">Giao dịch</h1>
+        <h1 className="text-lg font-black text-slate-900">{t.trade.title}</h1>
         {trader && (
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1" title="Bài đăng còn lại">
-              <span className="text-[10px] text-slate-500">Đăng</span>
+            <div className="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1" title={t.trade.postsRemaining}>
+              <span className="text-[10px] text-slate-500">{t.trade.post}</span>
               <span className={`text-xs font-bold ${remainingPosts > 0 ? 'text-teal-600' : 'text-red-500'}`}>
                 {remainingPosts}/{maxPostsPerDay}
               </span>
             </div>
-            <div className="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1" title="Request còn lại">
-              <span className="text-[10px] text-slate-500">Req</span>
+            <div className="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1" title={t.trade.request}>
+              <span className="text-[10px] text-slate-500">{t.trade.request}</span>
               <span className={`text-xs font-bold ${remainingRequests > 0 ? 'text-blue-600' : 'text-red-500'}`}>
                 {remainingRequests}/{maxRequestsPerDay}
               </span>
@@ -232,7 +234,7 @@ const ExchangePage: React.FC = () => {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm theo tên thẻ bài..."
+              placeholder={t.trade.searchByCardName}
               className="w-full h-9 pl-9 pr-8 text-sm bg-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
             {searchTerm && (
@@ -275,8 +277,8 @@ const ExchangePage: React.FC = () => {
                 }}
                 className="text-xs bg-slate-100 border-0 rounded-lg py-1.5 pl-2 pr-6 focus:ring-2 focus:ring-teal-500"
               >
-                <option value="EXPIRES-ASC">Sắp hết hạn</option>
-                <option value="EXPIRES-DESC">Còn nhiều thời gian</option>
+                <option value="EXPIRES-ASC">{t.trade.sortExpiringSoon}</option>
+                <option value="EXPIRES-DESC">{t.trade.sortMostTime}</option>
               </select>
             </div>
           </div>
@@ -292,7 +294,7 @@ const ExchangePage: React.FC = () => {
                   onChange={(e) => { setOnlineOnly(e.target.checked); handleFilterChange(); }}
                   className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
-                <span className="text-slate-700">Chỉ trader đang online</span>
+                <span className="text-slate-700">{t.trade.filterOnlineOnly}</span>
               </label>
 
               <div className="grid grid-cols-2 gap-2">
@@ -303,7 +305,7 @@ const ExchangePage: React.FC = () => {
                     onChange={(e) => { setSelectedRarity(e.target.value); handleFilterChange(); }}
                     className="w-full appearance-none bg-slate-100 rounded-lg py-2 pl-3 pr-8 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
                   >
-                    <option value="">Tất cả độ hiếm</option>
+                    <option value="">{t.trade.allRarities}</option>
                     {rarities.map(r => (
                       <option key={r} value={r}>{r}</option>
                     ))}
@@ -318,7 +320,7 @@ const ExchangePage: React.FC = () => {
                     onChange={(e) => { setSelectedSet(e.target.value); handleFilterChange(); }}
                     className="w-full appearance-none bg-slate-100 rounded-lg py-2 pl-3 pr-8 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
                   >
-                    <option value="">Tất cả Set</option>
+                    <option value="">{t.trade.allSets}</option>
                     {sets.map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
@@ -339,13 +341,13 @@ const ExchangePage: React.FC = () => {
               <div className="w-16 h-16 mx-auto bg-slate-100 rounded-full flex items-center justify-center mb-4">
                 <User className="w-8 h-8 text-slate-300" />
               </div>
-              <p className="text-sm font-bold text-slate-800 mb-2">Đăng nhập để xem</p>
-              <p className="text-xs text-slate-400 mb-4">Bạn cần đăng nhập để xem các request đã gửi</p>
+              <p className="text-sm font-bold text-slate-800 mb-2">{t.trade.loginToView}</p>
+              <p className="text-xs text-slate-400 mb-4">{t.trade.loginToViewRequests}</p>
               <button
                 onClick={() => router.push('/login')}
                 className="px-6 py-2 bg-teal-600 text-white text-sm font-bold rounded-lg"
               >
-                Đăng nhập
+                {t.nav.login}
               </button>
             </div>
           ) : outgoingRequests === undefined ? (
@@ -354,7 +356,7 @@ const ExchangePage: React.FC = () => {
             </div>
           ) : outgoingRequests.length === 0 ? (
             <div className="text-center py-12 text-slate-400">
-              <p className="text-sm">Bạn chưa gửi request nào</p>
+              <p className="text-sm">{t.trade.noRequestsSent}</p>
             </div>
           ) : (
             outgoingRequests.map((req) => (
@@ -379,9 +381,9 @@ const ExchangePage: React.FC = () => {
                     req.status === 'declined' ? 'bg-red-100 text-red-600' :
                     'bg-yellow-100 text-yellow-600'
                   }`}>
-                    {req.status === 'accepted' && <><Check className="w-3 h-3 inline mr-0.5" /> Đã chấp nhận</>}
-                    {req.status === 'declined' && <><XCircle className="w-3 h-3 inline mr-0.5" /> Đã từ chối</>}
-                    {req.status === 'pending' && 'Đang chờ'}
+                    {req.status === 'accepted' && <><Check className="w-3 h-3 inline mr-0.5" /> {t.trade.accepted}</>}
+                    {req.status === 'declined' && <><XCircle className="w-3 h-3 inline mr-0.5" /> {t.trade.declined}</>}
+                    {req.status === 'pending' && t.trade.pending}
                   </span>
                 </div>
 
@@ -389,13 +391,13 @@ const ExchangePage: React.FC = () => {
                   {req.offeredCard && (
                     <div className="flex items-center gap-2">
                       <img src={req.offeredCard.imageUrl} alt="" className="w-10 h-14 object-cover rounded border border-orange-200" />
-                      <span className="text-[10px] text-orange-600 font-bold">BẠN GỬI</span>
+                      <span className="text-[10px] text-orange-600 font-bold">{t.trade.youSend}</span>
                     </div>
                   )}
                   <ArrowRightLeft className="w-4 h-4 text-slate-300" />
                   {req.requestedCard && (
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-teal-600 font-bold">BẠN NHẬN</span>
+                      <span className="text-[10px] text-teal-600 font-bold">{t.trade.youReceive}</span>
                       <img src={req.requestedCard.imageUrl} alt="" className="w-10 h-14 object-cover rounded border border-teal-200" />
                     </div>
                   )}
@@ -419,17 +421,17 @@ const ExchangePage: React.FC = () => {
             <div className="w-16 h-16 mx-auto bg-slate-100 rounded-full flex items-center justify-center mb-4">
               <User className="w-8 h-8 text-slate-300" />
             </div>
-            <p className="text-sm font-bold text-slate-800 mb-2">Đăng nhập để xem</p>
+            <p className="text-sm font-bold text-slate-800 mb-2">{t.trade.loginToView}</p>
             <p className="text-xs text-slate-400 mb-4">
               {activeTab === 'my-offers' 
-                ? 'Bạn cần đăng nhập để xem và quản lý bài đăng của mình'
-                : 'Bạn cần đăng nhập để xem lịch sử giao dịch'}
+                ? t.trade.loginToViewPosts
+                : t.trade.loginToViewHistory}
             </p>
             <button
               onClick={() => router.push('/login')}
               className="px-6 py-2 bg-teal-600 text-white text-sm font-bold rounded-lg"
             >
-              Đăng nhập
+              {t.nav.login}
             </button>
           </div>
         ) : tradePostsResult === undefined ? (
@@ -440,15 +442,15 @@ const ExchangePage: React.FC = () => {
           <div className="text-center py-12 text-slate-400">
             <p className="text-sm">
               {activeTab === 'history'
-                ? 'Chưa có giao dịch nào hoàn thành'
-                : 'Chưa có bài đăng nào'}
+                ? t.trade.noCompletedTrades
+                : t.trade.noPostsYet}
             </p>
             {activeTab === 'my-offers' && trader && (
               <button
                 onClick={() => router.push('/trade/new')}
                 className="mt-3 px-4 py-2 bg-teal-600 text-white text-sm font-bold rounded-lg"
               >
-                Tạo bài đăng
+                {t.trade.createPost}
               </button>
             )}
           </div>
@@ -506,7 +508,7 @@ const ExchangePage: React.FC = () => {
                     <Clock className="w-3.5 h-3.5" />
                     <span className="text-xs font-medium">
                       {activeTab === 'history' ? (
-                        'Đã hoàn thành'
+                        t.trade.completed
                       ) : (
                         <CountdownTimer 
                           expiresAt={post.expiresAt} 
@@ -522,7 +524,7 @@ const ExchangePage: React.FC = () => {
               <div className="flex items-center gap-2">
                 {/* Have Cards */}
                 <div className="flex-1">
-                  <div className="text-[10px] text-teal-600 font-bold mb-1">CÓ ({post.haveCardsCount})</div>
+                  <div className="text-[10px] text-teal-600 font-bold mb-1">{t.trade.have} ({post.haveCardsCount})</div>
                   <div className="flex gap-1">
                     {post.haveCards.slice(0, 4).map((card) => (
                       <img
@@ -545,7 +547,7 @@ const ExchangePage: React.FC = () => {
 
                 {/* Want Cards */}
                 <div className="flex-1">
-                  <div className="text-[10px] text-blue-600 font-bold mb-1">CẦN ({post.wantCardsCount})</div>
+                  <div className="text-[10px] text-blue-600 font-bold mb-1">{t.trade.want} ({post.wantCardsCount})</div>
                   <div className="flex gap-1">
                     {post.wantCards.slice(0, 4).map((card) => (
                       <img
@@ -573,7 +575,7 @@ const ExchangePage: React.FC = () => {
       {activeTab !== 'my-requests' && posts.length > 0 && (
         <div className="px-4 space-y-3">
           <p className="text-xs text-slate-400 font-medium">
-            Tổng: {total} bài đăng
+            {t.common.total}: {total} {t.trade.totalPosts}
           </p>
 
           {/* Pagination */}

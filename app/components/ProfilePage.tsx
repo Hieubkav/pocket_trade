@@ -6,13 +6,16 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Pencil, Copy, Hexagon, RefreshCcw, Plus, LogIn, LogOut, UserPlus, X, Check, Loader2, ChevronRight, Clock, MessageSquare } from 'lucide-react';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
+import { useLocale } from '../contexts/LocaleContext';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { AVATARS } from './AvatarSelect';
+import LocaleSwitcher from './LocaleSwitcher';
 
 const ProfilePage: React.FC = () => {
   const router = useRouter();
   const { trader, logout, isLoading, refreshTrader } = useTraderAuth();
+  const { t } = useLocale();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const [editFriendCode, setEditFriendCode] = useState('');
@@ -29,11 +32,11 @@ const ProfilePage: React.FC = () => {
   );
 
   const getRankInfo = (points: number) => {
-    if (points >= 100) return { name: 'Kim Cương', color: 'text-cyan-400', bg: 'bg-cyan-500/20' };
-    if (points >= 50) return { name: 'Vàng', color: 'text-yellow-400', bg: 'bg-yellow-500/20' };
-    if (points >= 20) return { name: 'Bạc', color: 'text-slate-300', bg: 'bg-slate-400/20' };
-    if (points >= 5) return { name: 'Đồng', color: 'text-orange-400', bg: 'bg-orange-500/20' };
-    return { name: 'Sắt', color: 'text-slate-400', bg: 'bg-slate-500/20' };
+    if (points >= 100) return { name: t.profile.rankDiamond, color: 'text-cyan-400', bg: 'bg-cyan-500/20' };
+    if (points >= 50) return { name: t.profile.rankGold, color: 'text-yellow-400', bg: 'bg-yellow-500/20' };
+    if (points >= 20) return { name: t.profile.rankSilver, color: 'text-slate-300', bg: 'bg-slate-400/20' };
+    if (points >= 5) return { name: t.profile.rankBronze, color: 'text-orange-400', bg: 'bg-orange-500/20' };
+    return { name: t.profile.rankIron, color: 'text-slate-400', bg: 'bg-slate-500/20' };
   };
 
   const copyFriendCode = () => {
@@ -56,7 +59,7 @@ const ProfilePage: React.FC = () => {
   const handleSave = async () => {
     if (!trader) return;
     if (!editName.trim()) {
-      setEditError('Tên không được để trống');
+      setEditError(t.profile.nameRequired);
       return;
     }
     
@@ -76,7 +79,7 @@ const ProfilePage: React.FC = () => {
       if (error instanceof Error) {
         setEditError(error.message);
       } else {
-        setEditError('Có lỗi xảy ra');
+        setEditError(t.common.error);
       }
     } finally {
       setIsSaving(false);
@@ -85,21 +88,23 @@ const ProfilePage: React.FC = () => {
 
   const formatTimeAgo = (timestamp: number) => {
     const diff = Date.now() - timestamp;
+    const mins = Math.floor(diff / 60000);
     const hours = Math.floor(diff / (1000 * 60 * 60));
-    if (hours < 1) return 'Vừa xong';
-    if (hours < 24) return `${hours} giờ trước`;
+    if (mins < 1) return t.common.justNow;
+    if (hours < 1) return `${mins} ${t.common.minutesAgo}`;
+    if (hours < 24) return `${hours} ${t.common.hoursAgo}`;
     const days = Math.floor(hours / 24);
-    return `${days} ngày trước`;
+    return `${days} ${t.common.daysAgo}`;
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <span className="px-2 py-0.5 text-[10px] font-bold bg-green-100 text-green-700 rounded-full">Đang hoạt động</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-bold bg-green-100 text-green-700 rounded-full">{t.profile.active}</span>;
       case 'matched':
-        return <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700 rounded-full">Đã khớp</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700 rounded-full">{t.profile.matched}</span>;
       case 'expired':
-        return <span className="px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-500 rounded-full">Hết hạn</span>;
+        return <span className="px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-500 rounded-full">{t.profile.expired}</span>;
       default:
         return null;
     }
@@ -121,8 +126,8 @@ const ProfilePage: React.FC = () => {
             <LogIn className="w-12 h-12 text-teal-500" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-800 mb-2">Chào mừng đến Pocket Trade!</h2>
-            <p className="text-slate-500 text-sm">Đăng nhập để quản lý tài khoản và giao dịch thẻ</p>
+            <h2 className="text-xl font-black text-slate-800 mb-2">{t.profile.welcome}</h2>
+            <p className="text-slate-500 text-sm">{t.profile.welcomeDesc}</p>
           </div>
           <div className="flex flex-col gap-3">
             <Link
@@ -130,16 +135,17 @@ const ProfilePage: React.FC = () => {
               className="flex items-center justify-center gap-2 bg-teal-500 text-white px-8 py-4 rounded-2xl font-bold hover:bg-teal-600 transition-colors"
             >
               <LogIn size={20} />
-              Đăng nhập
+              {t.nav.login}
             </Link>
             <Link
               href="/register"
               className="flex items-center justify-center gap-2 bg-slate-100 text-slate-700 px-8 py-4 rounded-2xl font-bold hover:bg-slate-200 transition-colors"
             >
               <UserPlus size={20} />
-              Đăng ký tài khoản
+              {t.profile.createAccount}
             </Link>
           </div>
+          <LocaleSwitcher variant="full" />
         </div>
       </div>
     );
@@ -156,7 +162,7 @@ const ProfilePage: React.FC = () => {
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between">
-              <h2 className="font-bold text-slate-800">Chỉnh sửa hồ sơ</h2>
+              <h2 className="font-bold text-slate-800">{t.profile.editProfile}</h2>
               <button onClick={() => setIsEditOpen(false)} className="p-1">
                 <X className="w-5 h-5 text-slate-400" />
               </button>
@@ -171,7 +177,7 @@ const ProfilePage: React.FC = () => {
               
               {/* Avatar Select */}
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Chọn Avatar</label>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t.profile.selectAvatar}</label>
                 <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 p-3 bg-slate-50 rounded-xl max-h-48 overflow-y-auto">
                   {AVATARS.map((avatar) => (
                     <button
@@ -198,7 +204,7 @@ const ProfilePage: React.FC = () => {
               
               {/* Name */}
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Tên hiển thị *</label>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">{t.profile.displayName} *</label>
                 <input
                   type="text"
                   value={editName}
@@ -209,12 +215,12 @@ const ProfilePage: React.FC = () => {
               
               {/* Friend Code */}
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Friend ID (Pokemon TCG Pocket)</label>
+                <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">{t.profile.friendCodeDesc}</label>
                 <input
                   type="text"
                   value={editFriendCode}
                   onChange={(e) => setEditFriendCode(e.target.value.replace(/[^0-9-]/g, ''))}
-                  placeholder="VD: 1234-5678-9012-3456"
+                  placeholder={t.profile.friendCodeExample}
                   className="w-full bg-slate-50 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
@@ -229,12 +235,12 @@ const ProfilePage: React.FC = () => {
                 {isSaving ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Đang lưu...
+                    {t.common.saving}
                   </>
                 ) : (
                   <>
                     <Check className="w-4 h-4" />
-                    Lưu thay đổi
+                    {t.common.saveChanges}
                   </>
                 )}
               </button>
@@ -284,14 +290,14 @@ const ProfilePage: React.FC = () => {
                 
                 <div className="flex items-center gap-6">
                     <div className="flex flex-col">
-                        <span className="text-[9px] text-white/40 font-black uppercase tracking-wider mb-0.5">Điểm trade</span>
-                        <span className="text-xs text-white font-black tracking-tight">{(trader.tradePoint ?? 0).toLocaleString()} điểm</span>
+                        <span className="text-[9px] text-white/40 font-black uppercase tracking-wider mb-0.5">{t.profile.tradePoint}</span>
+                        <span className="text-xs text-white font-black tracking-tight">{(trader.tradePoint ?? 0).toLocaleString()} {t.profile.points}</span>
                     </div>
                     
                     <div className="w-[1px] h-6 bg-white/10"></div>
                     
                     <div className="flex flex-col">
-                        <span className="text-[9px] text-white/40 font-black uppercase tracking-wider mb-0.5">Hạng</span>
+                        <span className="text-[9px] text-white/40 font-black uppercase tracking-wider mb-0.5">{t.profile.rank}</span>
                         <span className={`text-xs font-black tracking-tight uppercase ${rankInfo.color}`}>{rankInfo.name}</span>
                     </div>
                 </div>
@@ -299,13 +305,16 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
         
-        <button
-          onClick={logout}
-          className="flex items-center gap-2 text-white/50 text-sm hover:text-white transition-colors"
-        >
-          <LogOut size={16} />
-          Đăng xuất
-        </button>
+        <div className="flex items-center justify-between">
+          <button
+            onClick={logout}
+            className="flex items-center gap-2 text-white/50 text-sm hover:text-white transition-colors"
+          >
+            <LogOut size={16} />
+            {t.nav.logout}
+          </button>
+          <LocaleSwitcher variant="full" className="text-white" />
+        </div>
       </div>
 
       {/* Posts Section */}
@@ -313,10 +322,10 @@ const ProfilePage: React.FC = () => {
         <div className="px-6 pt-6 pb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
                 <RefreshCcw className="w-5 h-5 text-teal-500" />
-                <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">Quản lý bài đăng</h3>
+                <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">{t.profile.managePosts}</h3>
             </div>
             <div className="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-black text-slate-400 uppercase">
-                Tổng: {myPosts?.total ?? 0}
+                {t.common.total}: {myPosts?.total ?? 0}
             </div>
         </div>
 
@@ -327,8 +336,8 @@ const ProfilePage: React.FC = () => {
         ) : myPosts.items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 space-y-6 px-6">
             <div className="text-center space-y-2 max-w-[240px]">
-              <h4 className="text-sm font-black text-slate-800">Bắt đầu hành trình trader!</h4>
-              <p className="text-[12px] font-bold text-slate-400 leading-tight">Bạn chưa có bài đăng nào. Hãy tạo bài để thu hút các nhà sưu tầm khác.</p>
+              <h4 className="text-sm font-black text-slate-800">{t.profile.startTrading}</h4>
+              <p className="text-[12px] font-bold text-slate-400 leading-tight">{t.profile.noPostsDesc}</p>
             </div>
 
             <button 
@@ -338,7 +347,7 @@ const ProfilePage: React.FC = () => {
               <div className="bg-teal-500 rounded-lg p-1 group-hover:bg-white transition-colors">
                 <Plus className="w-4 h-4 stroke-[4px] group-hover:text-teal-600" />
               </div>
-              Tạo bài đăng mới
+              {t.profile.createNewPost}
             </button>
           </div>
         ) : (
@@ -347,15 +356,15 @@ const ProfilePage: React.FC = () => {
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-green-50 rounded-xl p-3 text-center">
                 <p className="text-lg font-black text-green-600">{activePosts.length}</p>
-                <p className="text-[10px] text-green-600/70 font-bold">Đang hoạt động</p>
+                <p className="text-[10px] text-green-600/70 font-bold">{t.profile.active}</p>
               </div>
               <div className="bg-blue-50 rounded-xl p-3 text-center">
                 <p className="text-lg font-black text-blue-600">{matchedPosts.length}</p>
-                <p className="text-[10px] text-blue-600/70 font-bold">Đã khớp</p>
+                <p className="text-[10px] text-blue-600/70 font-bold">{t.profile.matched}</p>
               </div>
               <div className="bg-slate-50 rounded-xl p-3 text-center">
                 <p className="text-lg font-black text-slate-600">{(myPosts?.total ?? 0) - activePosts.length - matchedPosts.length}</p>
-                <p className="text-[10px] text-slate-500 font-bold">Hết hạn</p>
+                <p className="text-[10px] text-slate-500 font-bold">{t.profile.expired}</p>
               </div>
             </div>
 
@@ -387,17 +396,17 @@ const ProfilePage: React.FC = () => {
                         {post.requestsCount > 0 && (
                           <span className="px-2 py-0.5 text-[10px] font-bold bg-pink-100 text-pink-700 rounded-full flex items-center gap-1">
                             <MessageSquare className="w-3 h-3" />
-                            {post.requestsCount} yêu cầu
+                            {post.requestsCount} {t.trade.requests}
                           </span>
                         )}
                       </div>
                       
                       <p className="text-xs text-slate-600 truncate">
-                        <span className="font-bold text-teal-600">Có:</span>{' '}
+                        <span className="font-bold text-teal-600">{t.trade.have}:</span>{' '}
                         {post.haveCards.map(c => c.name).join(', ')}
                       </p>
                       <p className="text-xs text-slate-600 truncate">
-                        <span className="font-bold text-orange-600">Cần:</span>{' '}
+                        <span className="font-bold text-orange-600">{t.trade.want}:</span>{' '}
                         {post.wantCards.map(c => c.name).join(', ')}
                       </p>
                       
@@ -423,7 +432,7 @@ const ProfilePage: React.FC = () => {
               className="w-full flex items-center justify-center gap-2 bg-teal-500 text-white py-3 rounded-xl font-bold hover:bg-teal-600 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Tạo bài đăng mới
+              {t.profile.createNewPost}
             </button>
           </div>
         )}

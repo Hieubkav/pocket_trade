@@ -4,8 +4,10 @@ import React from 'react';
 import Link from 'next/link';
 import { LayoutGrid, MessageSquare, User, ArrowLeftRight, LogIn, LogOut } from 'lucide-react';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
+import { useLocale } from '../contexts/LocaleContext';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import LocaleSwitcher from './LocaleSwitcher';
 
 interface HeaderProps {
   currentView: 'library' | 'trade' | 'chat' | 'profile';
@@ -13,6 +15,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ currentView }) => {
   const { trader, logout, isLoading } = useTraderAuth();
+  const { t } = useLocale();
   const settings = useQuery(api.settings.get);
   const todayPostsCount = useQuery(
     api.tradePosts.countTodayPosts,
@@ -23,10 +26,10 @@ const Header: React.FC<HeaderProps> = ({ currentView }) => {
   const remainingPosts = maxPostsPerDay - (todayPostsCount ?? 0);
 
   const navItems = [
-    { id: 'trade', label: 'GIAO DỊCH', icon: ArrowLeftRight, href: '/' },
-    { id: 'library', label: 'THƯ VIỆN', icon: LayoutGrid, href: '/library' },
-    { id: 'chat', label: 'TRÒ CHUYỆN', icon: MessageSquare, href: '/chat' },
-    { id: 'profile', label: 'CÁ NHÂN', icon: User, href: '/profile' },
+    { id: 'trade', label: t.nav.trade, icon: ArrowLeftRight, href: '/' },
+    { id: 'library', label: t.nav.library, icon: LayoutGrid, href: '/library' },
+    { id: 'chat', label: t.nav.chat, icon: MessageSquare, href: '/chat' },
+    { id: 'profile', label: t.nav.profile, icon: User, href: '/profile' },
   ] as const;
 
   return (
@@ -72,7 +75,8 @@ const Header: React.FC<HeaderProps> = ({ currentView }) => {
             ))}
           </nav>
 
-          <div className="w-40 flex justify-end">
+          <div className="w-40 flex justify-end items-center gap-2">
+            <LocaleSwitcher />
             {!isLoading && (
               trader ? (
                 <div className="flex items-center gap-3">
@@ -84,7 +88,7 @@ const Header: React.FC<HeaderProps> = ({ currentView }) => {
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-medium transition-colors"
                   >
                     <LogOut size={14} />
-                    Thoát
+                    {t.nav.logout}
                   </button>
                 </div>
               ) : (
@@ -93,7 +97,7 @@ const Header: React.FC<HeaderProps> = ({ currentView }) => {
                   className="flex items-center gap-1.5 px-4 py-2 bg-white text-teal-600 rounded-lg text-xs font-bold hover:bg-teal-50 transition-colors"
                 >
                   <LogIn size={14} />
-                  Đăng nhập
+                  {t.nav.login}
                 </Link>
               )
             )}

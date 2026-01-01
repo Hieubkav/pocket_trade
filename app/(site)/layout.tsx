@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import "../globals.css";
 import NavigationWrapper from "../components/NavigationWrapper";
 import { ConvexClientProvider } from "../ConvexClientProvider";
 import { TraderAuthProvider } from "../contexts/TraderAuthContext";
+import { LocaleProvider } from "../contexts/LocaleContext";
 import VisitorTracker from "../components/VisitorTracker";
 import { getSettings } from "../lib/getSettings";
+import { Locale } from "../lib/i18n/translations";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,21 +41,26 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function SiteLayout({
+export default async function SiteLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const locale = (cookieStore.get("locale")?.value || "vi") as Locale;
+
   return (
-    <html lang="vi" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ConvexClientProvider>
-          <TraderAuthProvider>
-            <VisitorTracker />
-            <NavigationWrapper>{children}</NavigationWrapper>
-          </TraderAuthProvider>
+          <LocaleProvider initialLocale={locale}>
+            <TraderAuthProvider>
+              <VisitorTracker />
+              <NavigationWrapper>{children}</NavigationWrapper>
+            </TraderAuthProvider>
+          </LocaleProvider>
         </ConvexClientProvider>
       </body>
     </html>

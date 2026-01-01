@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, ListFilter, ArrowUp, ArrowDown, Check } from 'lucide-react';
 import { SortOption, SortDirection, FilterState, CardCategory } from '../types';
+import { useLocale } from '../contexts/LocaleContext';
 
 interface SearchAndFiltersProps {
   searchTerm: string;
@@ -27,6 +28,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
   resultCount,
   collections
 }) => {
+  const { t } = useLocale();
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   
@@ -43,9 +45,9 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
   }, []);
 
   const sortOptions: { value: SortOption; label: string }[] = [
-    { value: 'ID', label: 'Số thẻ TCG' },
-    { value: 'NAME', label: 'Tên thẻ' },
-    { value: 'TYPE', label: 'Hệ / Tộc' },
+    { value: 'ID', label: t.library.sortByCardNumber },
+    { value: 'NAME', label: t.library.sortByName },
+    { value: 'TYPE', label: t.library.sortByType },
   ];
 
   const categories: (CardCategory | 'All')[] = ['All', 'Pokemon', 'Trainer'];
@@ -59,7 +61,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-teal-600 transition-colors" />
               <input 
                 type="text"
-                placeholder="TÌM TÊN THẺ..."
+                placeholder={t.library.searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-slate-100 border border-slate-200 rounded-xl py-2.5 pl-11 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-600 transition-all placeholder:text-slate-500 tracking-wider"
@@ -74,7 +76,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
                     ${isSortOpen ? 'border-teal-600 bg-teal-50 text-teal-600' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}
                   `}
                 >
-                  <span>SẮP XẾP</span>
+                  <span>{t.library.sort}</span>
                   <div className="w-[1px] h-3 bg-slate-300 mx-1" />
                   <span className="uppercase">{sortOptions.find(o => o.value === sortOption)?.label}</span>
                   {sortDirection === 'ASC' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
@@ -111,7 +113,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
                   `}
                 >
                   <ListFilter className="w-4 h-4" />
-                  <span className="hidden md:inline">LỌC CHI TIẾT</span>
+                  <span className="hidden md:inline">{t.library.filterDetail}</span>
                   <span className={`ml-1 flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[9px] font-black transition-colors ${isFilterOpen ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
                     {resultCount}
                   </span>
@@ -120,7 +122,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
                 {isFilterOpen && (
                   <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-2xl py-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                     <div className="px-4 pb-3 mb-3 border-b border-slate-100">
-                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Phân loại</h3>
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t.library.category}</h3>
                       <div className="flex flex-wrap gap-2">
                         {categories.map((cat) => (
                           <button
@@ -130,14 +132,14 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
                               ${filters.category === cat ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}
                             `}
                           >
-                            {cat.toUpperCase()}
+                            {cat === 'All' ? t.common.all.toUpperCase() : cat.toUpperCase()}
                           </button>
                         ))}
                       </div>
                     </div>
 
                     <div className="px-4 pb-3 mb-3 border-b border-slate-100 max-h-40 overflow-y-auto">
-                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Bộ sưu tập (Packs)</h3>
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{t.library.packs}</h3>
                       <div className="grid grid-cols-1 gap-1">
                         <button
                           onClick={() => setFilters({ ...filters, collection: 'All' })}
@@ -145,7 +147,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
                             ${filters.collection === 'All' ? 'bg-teal-50 text-teal-600' : 'text-slate-600 hover:bg-slate-50'}
                           `}
                         >
-                          TẤT CẢ PACKS
+                          {t.library.allPacks}
                           {filters.collection === 'All' && <Check className="w-3.5 h-3.5" />}
                         </button>
                         {collections.map((coll) => (
@@ -171,7 +173,7 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
                         }}
                         className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-[10px] font-bold transition-all uppercase tracking-tighter"
                       >
-                        Xóa tất cả bộ lọc
+                        {t.library.clearFilters}
                       </button>
                     </div>
                   </div>

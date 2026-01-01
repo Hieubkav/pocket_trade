@@ -5,29 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
+import { useLocale } from '../contexts/LocaleContext';
 import { Search, Loader2, MessageSquare, ArrowDownToLine, ArrowUpFromLine, Check, X, LogIn } from 'lucide-react';
-
-// Tính rank từ tradePoint
-const getRank = (tradePoint: number) => {
-  if (tradePoint > 1000) return { name: 'Kim Cương', color: 'text-cyan-500', bg: 'bg-cyan-50' };
-  if (tradePoint > 500) return { name: 'Vàng', color: 'text-yellow-500', bg: 'bg-yellow-50' };
-  if (tradePoint > 200) return { name: 'Bạc', color: 'text-slate-400', bg: 'bg-slate-100' };
-  if (tradePoint >= 100) return { name: 'Đồng', color: 'text-orange-500', bg: 'bg-orange-50' };
-  return { name: 'Sắt', color: 'text-slate-500', bg: 'bg-slate-100' };
-};
-
-// Format time ago
-const timeAgo = (timestamp: number) => {
-  const diff = Date.now() - timestamp;
-  const mins = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-
-  if (mins < 1) return 'Vừa xong';
-  if (mins < 60) return `${mins} phút trước`;
-  if (hours < 24) return `${hours} giờ trước`;
-  return `${days} ngày trước`;
-};
 
 interface ChatPageProps {
   onChatClick?: (chat: { id: string }) => void;
@@ -36,7 +15,30 @@ interface ChatPageProps {
 const ChatPage: React.FC<ChatPageProps> = ({ onChatClick }) => {
   const router = useRouter();
   const { trader } = useTraderAuth();
+  const { t } = useLocale();
   const [searchTerm, setSearchTerm] = React.useState('');
+
+  // Tính rank từ tradePoint
+  const getRank = (tradePoint: number) => {
+    if (tradePoint > 1000) return { name: t.profile.rankDiamond, color: 'text-cyan-500', bg: 'bg-cyan-50' };
+    if (tradePoint > 500) return { name: t.profile.rankGold, color: 'text-yellow-500', bg: 'bg-yellow-50' };
+    if (tradePoint > 200) return { name: t.profile.rankSilver, color: 'text-slate-400', bg: 'bg-slate-100' };
+    if (tradePoint >= 100) return { name: t.profile.rankBronze, color: 'text-orange-500', bg: 'bg-orange-50' };
+    return { name: t.profile.rankIron, color: 'text-slate-500', bg: 'bg-slate-100' };
+  };
+
+  // Format time ago
+  const timeAgo = (timestamp: number) => {
+    const diff = Date.now() - timestamp;
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (mins < 1) return t.common.justNow;
+    if (mins < 60) return `${mins} ${t.common.minutesAgo}`;
+    if (hours < 24) return `${hours} ${t.common.hoursAgo}`;
+    return `${days} ${t.common.daysAgo}`;
+  };
 
   const chats = useQuery(
     api.chats.listByTrader,
@@ -51,20 +53,20 @@ const ChatPage: React.FC<ChatPageProps> = ({ onChatClick }) => {
     return (
       <div className="min-h-screen bg-white pb-20">
         <div className="sticky top-0 z-50 bg-white px-4 py-5 flex items-center justify-center border-b border-slate-50">
-          <h1 className="text-lg font-black text-slate-800 tracking-tight">Trò chuyện</h1>
+          <h1 className="text-lg font-black text-slate-800 tracking-tight">{t.chat.title}</h1>
         </div>
         <div className="flex flex-col items-center justify-center px-6 pt-20">
           <div className="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center mb-6">
             <MessageSquare className="w-10 h-10 text-teal-400" />
           </div>
-          <h2 className="text-lg font-bold text-slate-800 mb-2">Đăng nhập để chat</h2>
-          <p className="text-sm text-slate-400 text-center mb-6">Bạn cần đăng nhập để xem và gửi tin nhắn với các trader khác</p>
+          <h2 className="text-lg font-bold text-slate-800 mb-2">{t.chat.loginToChat}</h2>
+          <p className="text-sm text-slate-400 text-center mb-6">{t.chat.loginToChatDesc}</p>
           <button
             onClick={() => router.push('/login')}
             className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 transition-colors"
           >
             <LogIn className="w-5 h-5" />
-            Đăng nhập
+            {t.nav.login}
           </button>
         </div>
       </div>
@@ -74,7 +76,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ onChatClick }) => {
   return (
     <div className="min-h-screen bg-white pb-20">
       <div className="sticky top-0 z-50 bg-white px-4 py-5 flex items-center justify-center border-b border-slate-50">
-        <h1 className="text-lg font-black text-slate-800 tracking-tight">Trò chuyện</h1>
+        <h1 className="text-lg font-black text-slate-800 tracking-tight">{t.chat.title}</h1>
       </div>
 
       <div className="px-4 py-3 bg-slate-50/50">
@@ -84,7 +86,7 @@ const ChatPage: React.FC<ChatPageProps> = ({ onChatClick }) => {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Tìm kiếm tin nhắn..."
+            placeholder={t.chat.searchMessages}
             className="w-full bg-white border border-slate-100 rounded-xl py-2 pl-9 pr-4 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-100 transition-all shadow-sm"
           />
         </div>
@@ -97,17 +99,17 @@ const ChatPage: React.FC<ChatPageProps> = ({ onChatClick }) => {
       ) : filteredChats?.length === 0 ? (
         <div className="text-center py-12 px-4">
           <MessageSquare className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-          <p className="text-sm text-slate-400">Chưa có cuộc trò chuyện nào</p>
-          <p className="text-xs text-slate-300 mt-1">Khi có giao dịch được chấp nhận, bạn sẽ thấy ở đây</p>
+          <p className="text-sm text-slate-400">{t.chat.noConversations}</p>
+          <p className="text-xs text-slate-300 mt-1">{t.chat.whenAccepted}</p>
         </div>
       ) : (
         <div className="divide-y divide-slate-50">
           {filteredChats?.map((chat) => {
             const rank = getRank(chat.partner?.tradePoint ?? 0);
             const statusTag = chat.status === 'completed'
-              ? { label: 'Đã hoàn thành', type: 'success' }
+              ? { label: t.chat.completed, type: 'success' }
               : chat.status === 'cancelled'
-                ? { label: 'Đã hủy', type: 'muted' }
+                ? { label: t.chat.cancelled, type: 'muted' }
                 : null;
 
             return (
@@ -151,9 +153,9 @@ const ChatPage: React.FC<ChatPageProps> = ({ onChatClick }) => {
                     <p className="text-[12px] font-medium text-slate-400 truncate leading-tight">
                       {chat.lastMessage
                         ? chat.lastMessage.contentType === 'image'
-                          ? '📷 Hình ảnh'
+                          ? `📷 ${t.chat.image}`
                           : chat.lastMessage.content
-                        : 'Chưa có tin nhắn'}
+                        : t.chat.noMessages}
                     </p>
                     {chat.unreadCount > 0 && (
                       <div className="min-w-[18px] h-[18px] flex items-center justify-center bg-pink-500 text-white text-[9px] font-black rounded-full px-1 shadow-[0_2px_8px_rgba(236,72,153,0.3)]">
