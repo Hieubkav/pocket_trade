@@ -19,8 +19,14 @@ export const getFilterOptions = query({
       ctx.db.query("sets").collect(),
     ]);
     
-    // Build collections list
-    const collections = sets.map(s => s.name).sort();
+    // Build collections list - sort by order field
+    const sortedSets = [...sets].sort((a, b) => {
+      const orderA = a.order ?? 9999;
+      const orderB = b.order ?? 9999;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name);
+    });
+    const collections = sortedSets.map(s => s.name);
     
     // Build rarities list sorted
     const rarityNames = rarities.map(r => r.name);
@@ -35,7 +41,7 @@ export const getFilterOptions = query({
   },
 });
 
-// ============ OPTIMIZED V2: Dùng index + take thay vì collect all ============
+// ============ OPTIMIZED: Load all để có total đúng, chỉ enrich page hiện tại ============
 export const listPaginated = query({
   args: { 
     limit: v.number(),
@@ -80,28 +86,23 @@ export const listPaginated = query({
       }
     }
     
-
-    
-    // ============ STRATEGY: Dùng index phù hợp nhất + LIMIT ============
-    const MAX_CARDS = 1000; // Giới hạn để tránh quá tải bandwidth
+    // ============ Load ALL cards để có total count đúng ============
     let rawCards;
-    
     if (filterRarityId) {
       rawCards = await ctx.db.query("cards")
         .withIndex("by_rarity", q => q.eq("rarityId", filterRarityId!))
-        .take(MAX_CARDS);
+        .collect();
     } else if (filterPackIds && filterPackIds.size === 1) {
       const packId = [...filterPackIds][0];
       rawCards = await ctx.db.query("cards")
         .withIndex("by_pack", q => q.eq("packId", packId))
-        .take(MAX_CARDS);
+        .collect();
     } else if (args.cardType && args.cardType !== "All") {
       rawCards = await ctx.db.query("cards")
         .withIndex("by_type", q => q.eq("type", args.cardType!))
-        .take(MAX_CARDS);
+        .collect();
     } else {
-      // No selective filter - MUST have limit
-      rawCards = await ctx.db.query("cards").take(MAX_CARDS);
+      rawCards = await ctx.db.query("cards").collect();
     }
     
     // Apply remaining filters in JS
@@ -135,8 +136,45 @@ export const listPaginated = query({
       return true;
     });
     
-    // Enrich ONLY filtered cards (not all)
-    const enriched = filtered.map(card => {
+    // Lấy total TRƯỚC khi paginate
+    const total = filtered.length;
+    
+    // Sort trước khi paginate (sort trên raw data, chưa enrich)
+    const sortBy = args.sortBy || "ID";
+    const sortDir = args.sortDir || "ASC";
+    
+    // Pre-compute sort helpers
+    const getRarityOrder = (card: typeof filtered[0]) => {
+      const rarity = rarityMap.get(card.rarityId);
+      return RARITY_ORDER[rarity?.name || ""] || 0;
+    };
+    const getSetCode = (card: typeof filtered[0]) => {
+      const pack = packMap.get(card.packId);
+      const set = pack ? setMap.get(pack.setId) : undefined;
+      return set?.setCode || "";
+    };
+    
+    filtered.sort((a, b) => {
+      let cmp = 0;
+      switch (sortBy) {
+        case "NAME": cmp = a.name.localeCompare(b.name); break;
+        case "TYPE": cmp = a.type.localeCompare(b.type); break;
+        case "RARITY": cmp = getRarityOrder(a) - getRarityOrder(b); break;
+        default:
+          cmp = getSetCode(b).localeCompare(getSetCode(a));
+          if (cmp === 0) cmp = (parseInt(a.cardNumber) || 0) - (parseInt(b.cardNumber) || 0);
+      }
+      return sortDir === "ASC" ? cmp : -cmp;
+    });
+    
+    // Paginate TRƯỚC khi enrich (chỉ enrich page hiện tại)
+    const page = args.page || 1;
+    const startIndex = (page - 1) * args.limit;
+    const pageCards = filtered.slice(startIndex, startIndex + args.limit);
+    const totalPages = Math.ceil(total / args.limit);
+    
+    // Enrich CHỈ cards trong page hiện tại
+    const items = pageCards.map(card => {
       const rarity = rarityMap.get(card.rarityId);
       const pack = packMap.get(card.packId);
       const set = pack ? setMap.get(pack.setId) : undefined;
@@ -150,35 +188,20 @@ export const listPaginated = query({
       };
     });
     
-    // Sort
-    const sortBy = args.sortBy || "ID";
-    const sortDir = args.sortDir || "ASC";
-    enriched.sort((a, b) => {
-      let cmp = 0;
-      switch (sortBy) {
-        case "NAME": cmp = a.name.localeCompare(b.name); break;
-        case "TYPE": cmp = a.type.localeCompare(b.type); break;
-        case "RARITY": cmp = a.rarityOrder - b.rarityOrder; break;
-        default:
-          cmp = b.setCode.localeCompare(a.setCode);
-          if (cmp === 0) cmp = (parseInt(a.cardNumber) || 0) - (parseInt(b.cardNumber) || 0);
-      }
-      return sortDir === "ASC" ? cmp : -cmp;
-    });
-    
-    // Paginate
-    const page = args.page || 1;
-    const startIndex = (page - 1) * args.limit;
-    const items = enriched.slice(startIndex, startIndex + args.limit);
-    const totalPages = Math.ceil(enriched.length / args.limit);
-    
     // Return filter options from metadata (already loaded)
-    const collections = [...new Set(sets.map(s => s.name))].sort();
+    // Sort sets by order field, then by name
+    const sortedSets = [...sets].sort((a, b) => {
+      const orderA = a.order ?? 9999;
+      const orderB = b.order ?? 9999;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name);
+    });
+    const collections = sortedSets.map(s => s.name);
     const rarityNames = rarities.map(r => r.name).sort((a, b) => (RARITY_ORDER[a] || 0) - (RARITY_ORDER[b] || 0));
     
     return { 
       items, 
-      total: enriched.length, 
+      total, 
       totalPages, 
       currentPage: page,
       collections, 
@@ -187,13 +210,12 @@ export const listPaginated = query({
   },
 });
 
-// ============ ADMIN: Giới hạn 2000 cards để tránh bandwidth khổng lồ ============
+// ============ ADMIN: Cần ALL cards để quản lý ============
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    // Admin cần xem cards - GIỚI HẠN 2000 để tránh quá tải
     const [cards, rarities, packs, sets] = await Promise.all([
-      ctx.db.query("cards").take(2000), // LIMIT!
+      ctx.db.query("cards").collect(),
       ctx.db.query("rarities").collect(),
       ctx.db.query("packs").collect(),
       ctx.db.query("sets").collect(),

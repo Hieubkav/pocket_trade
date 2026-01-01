@@ -2,13 +2,13 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ArrowUpDown, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 
-type SortField = 'name' | 'setCode' | 'packCount' | 'cardCount';
+type SortField = 'name' | 'setCode' | 'packCount' | 'cardCount' | 'order';
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100, 'all'] as const;
 type PageSize = typeof PAGE_SIZE_OPTIONS[number];
 
@@ -17,10 +17,12 @@ export default function SetsPage() {
   const seriesList = useQuery(api.series.list);
   const removeSet = useMutation(api.sets.remove);
   const bulkRemoveSets = useMutation(api.sets.bulkRemove);
+  const reorderSets = useMutation(api.sets.reorder);
   const [search, setSearch] = useState('');
   const [filterSeries, setFilterSeries] = useState('');
-  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortField, setSortField] = useState<SortField>('order');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [isReordering, setIsReordering] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize>(10);
   const [selectedIds, setSelectedIds] = useState<Set<Id<"sets">>>(new Set());
@@ -33,6 +35,10 @@ export default function SetsPage() {
       const matchSeries = !filterSeries || s.seriesId === filterSeries;
       return matchSearch && matchSeries;
     });
+    // Nếu sortField là order, giữ nguyên thứ tự từ server
+    if (sortField === 'order') {
+      return sortDir === 'asc' ? result : [...result].reverse();
+    }
     result.sort((a, b) => {
       let aVal: string | number, bVal: string | number;
       if (sortField === 'name') { aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); }
@@ -102,6 +108,24 @@ export default function SetsPage() {
       toast.success(`Đã xóa ${selectedIds.size} sets`);
       setSelectedIds(new Set());
     }
+  };
+
+  const handleMoveUp = async (index: number) => {
+    if (index === 0 || !sets) return;
+    setIsReordering(true);
+    const newOrder = [...filteredAndSorted.map(s => s._id)];
+    [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    await reorderSets({ orderedIds: newOrder });
+    setIsReordering(false);
+  };
+
+  const handleMoveDown = async (index: number) => {
+    if (!sets || index === filteredAndSorted.length - 1) return;
+    setIsReordering(true);
+    const newOrder = [...filteredAndSorted.map(s => s._id)];
+    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    await reorderSets({ orderedIds: newOrder });
+    setIsReordering(false);
   };
 
   return (
@@ -192,7 +216,9 @@ export default function SetsPage() {
                     {search || filterSeries ? 'Không tìm thấy set nào' : 'Chưa có set nào'}
                   </td>
                 </tr>
-              ) : paginatedData.map((set) => (
+              ) : paginatedData.map((set, idx) => {
+                const globalIndex = pageSize === 'all' ? idx : (currentPage - 1) * (pageSize as number) + idx;
+                return (
                 <tr key={set._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-4 py-4 w-12">
                     <input
@@ -223,23 +249,39 @@ export default function SetsPage() {
                   <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{set.packCount}</td>
                   <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{set.cardCount}</td>
                   <td className="px-4 py-4">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-0.5">
+                      <button
+                        onClick={() => handleMoveUp(globalIndex)}
+                        disabled={globalIndex === 0 || isReordering || sortField !== 'order'}
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Di chuyển lên"
+                      >
+                        <ChevronUp size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleMoveDown(globalIndex)}
+                        disabled={globalIndex === filteredAndSorted.length - 1 || isReordering || sortField !== 'order'}
+                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        title="Di chuyển xuống"
+                      >
+                        <ChevronDown size={16} />
+                      </button>
                       <Link 
                         href={`/admin/sets/${set._id}/edit`}
-                        className="p-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                        className="p-1.5 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition-colors"
                       >
                         <Pencil size={16} />
                       </Link>
                       <button 
                         onClick={() => handleDelete(set._id)}
-                        className="p-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                        className="p-1.5 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                       >
                         <Trash2 size={16} />
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
         </div>

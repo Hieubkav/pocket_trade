@@ -1,24 +1,53 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
-// ============ OPTIMIZED: Dùng cached counts thay vì fetch ALL cards ============
+// ============ ADMIN: Cần đếm chính xác packCount và cardCount ============
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const [sets, series] = await Promise.all([
+    const [sets, series, packs, cards] = await Promise.all([
       ctx.db.query("sets").collect(),
       ctx.db.query("series").collect(),
+      ctx.db.query("packs").collect(),
+      ctx.db.query("cards").collect(),
     ]);
     
     const seriesMap = new Map(series.map(s => [s._id, s]));
     
-    return sets.map(set => {
+    // Đếm cards per pack
+    const cardCountByPack = new Map<string, number>();
+    for (const card of cards) {
+      const count = cardCountByPack.get(card.packId) ?? 0;
+      cardCountByPack.set(card.packId, count + 1);
+    }
+    
+    // Đếm packs và cards per set
+    const packCountBySet = new Map<string, number>();
+    const cardCountBySet = new Map<string, number>();
+    for (const pack of packs) {
+      const pCount = packCountBySet.get(pack.setId) ?? 0;
+      packCountBySet.set(pack.setId, pCount + 1);
+      
+      const cCount = cardCountBySet.get(pack.setId) ?? 0;
+      const packCards = cardCountByPack.get(pack._id) ?? 0;
+      cardCountBySet.set(pack.setId, cCount + packCards);
+    }
+    
+    // Sort by order (nulls last), then by name
+    const sortedSets = [...sets].sort((a, b) => {
+      const orderA = a.order ?? 9999;
+      const orderB = b.order ?? 9999;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name);
+    });
+    
+    return sortedSets.map(set => {
       const seriesItem = seriesMap.get(set.seriesId);
       return {
         ...set,
         seriesName: seriesItem?.name || "",
-        packCount: set.packCount ?? 0, // Dùng cached count
-        cardCount: set.cardCount ?? 0, // Dùng cached count
+        packCount: packCountBySet.get(set._id) ?? 0,
+        cardCount: cardCountBySet.get(set._id) ?? 0,
       };
     });
   },
@@ -74,57 +103,15 @@ export const bulkRemove = mutation({
   },
 });
 
-// ============ ADMIN: Sync cached counts cho tất cả sets và packs ============
-export const syncCachedCounts = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const [sets, packs, cards] = await Promise.all([
-      ctx.db.query("sets").collect(),
-      ctx.db.query("packs").collect(),
-      ctx.db.query("cards").collect(),
-    ]);
-    
-    // Count cards per pack
-    const cardCountByPack = new Map<string, number>();
-    for (const card of cards) {
-      const count = cardCountByPack.get(card.packId) ?? 0;
-      cardCountByPack.set(card.packId, count + 1);
+// ============ Reorder sets ============
+export const reorder = mutation({
+  args: { 
+    orderedIds: v.array(v.id("sets")),
+  },
+  handler: async (ctx, args) => {
+    for (let i = 0; i < args.orderedIds.length; i++) {
+      await ctx.db.patch(args.orderedIds[i], { order: i });
     }
-    
-    // Update packs với cardCount
-    for (const pack of packs) {
-      const cardCount = cardCountByPack.get(pack._id) ?? 0;
-      if (pack.cardCount !== cardCount) {
-        await ctx.db.patch(pack._id, { cardCount });
-      }
-    }
-    
-    // Count packs và cards per set
-    const packCountBySet = new Map<string, number>();
-    const cardCountBySet = new Map<string, number>();
-    
-    for (const pack of packs) {
-      const pCount = packCountBySet.get(pack.setId) ?? 0;
-      packCountBySet.set(pack.setId, pCount + 1);
-      
-      const cCount = cardCountBySet.get(pack.setId) ?? 0;
-      const packCards = cardCountByPack.get(pack._id) ?? 0;
-      cardCountBySet.set(pack.setId, cCount + packCards);
-    }
-    
-    // Update sets với packCount và cardCount
-    for (const set of sets) {
-      const packCount = packCountBySet.get(set._id) ?? 0;
-      const cardCount = cardCountBySet.get(set._id) ?? 0;
-      if (set.packCount !== packCount || set.cardCount !== cardCount) {
-        await ctx.db.patch(set._id, { packCount, cardCount });
-      }
-    }
-    
-    return { 
-      setsUpdated: sets.length, 
-      packsUpdated: packs.length,
-      totalCards: cards.length,
-    };
+    return { success: true };
   },
 });

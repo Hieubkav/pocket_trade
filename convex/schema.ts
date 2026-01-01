@@ -33,7 +33,6 @@ export default defineSchema({
     name: v.string(),
     setId: v.id("sets"),
     imageUrl: v.optional(v.string()),
-    cardCount: v.optional(v.number()), // Cached count để tránh fetch ALL cards
   }).index("by_set", ["setId"]),
 
   // 5. Set
@@ -42,9 +41,10 @@ export default defineSchema({
     imageUrl: v.string(),
     setCode: v.string(),
     seriesId: v.id("series"),
-    cardCount: v.optional(v.number()), // Cached count để tránh fetch ALL cards
-    packCount: v.optional(v.number()), // Cached count
-  }).index("by_series", ["seriesId"]),
+    order: v.optional(v.number()), // Thứ tự hiển thị
+  })
+    .index("by_series", ["seriesId"])
+    .index("by_order", ["order"]),
 
   // 6. Admin
   admins: defineTable({
