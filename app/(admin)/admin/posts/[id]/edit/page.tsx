@@ -162,30 +162,22 @@ export default function EditPostPage() {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Nội dung
               </label>
-              <LexicalEditor
-                value={content}
-                onChange={setContent}
-                placeholder="Nhập nội dung bài viết..."
-                postId={id}
-              />
-            </div>
-
-            {isMarkdown && (
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                  Markdown Content (Raw) - Paste markdown gốc vào đây
-                </label>
+              {!isMarkdown ? (
+                <LexicalEditor
+                  value={content}
+                  onChange={setContent}
+                  placeholder="Nhập nội dung bài viết..."
+                  postId={id}
+                />
+              ) : (
                 <textarea
                   value={markdownContent}
                   onChange={(e) => setMarkdownContent(e.target.value)}
-                  placeholder="# Heading&#10;&#10;**Bold text**&#10;&#10;| Column 1 | Column 2 |&#10;|----------|----------|&#10;| Data 1   | Data 2   |"
-                  className="w-full h-64 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200 font-mono resize-y"
+                  placeholder="# Heading 1&#10;&#10;## Heading 2&#10;&#10;**Bold text** và *italic text*&#10;&#10;- List item 1&#10;- List item 2&#10;&#10;| Column 1 | Column 2 | Column 3 |&#10;|----------|----------|----------|&#10;| Data 1   | Data 2   | Data 3   |&#10;&#10;```javascript&#10;function hello() {&#10;  console.log('Hello World');&#10;}&#10;```"
+                  className="w-full h-[500px] px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200 font-mono resize-y leading-relaxed"
                 />
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Chỉ dùng khi tick "Render as Markdown". Paste markdown gốc vào đây để render đúng bảng, code blocks.
-                </p>
-              </div>
-            )}
+              )}
+            </div>
 
             <div className="md:col-span-2">
               <label className="flex items-center gap-3 cursor-pointer">
