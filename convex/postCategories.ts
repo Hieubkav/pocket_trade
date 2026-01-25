@@ -12,6 +12,41 @@ export const list = query({
   },
 });
 
+// List all categories with post count
+export const listWithCount = query({
+  handler: async (ctx) => {
+    const categories = await ctx.db
+      .query("postCategories")
+      .order("desc")
+      .collect();
+    
+    // Get post count for each category
+    const categoriesWithCount = await Promise.all(
+      categories.map(async (cat) => {
+        const pivots = await ctx.db
+          .query("postCategoryPivot")
+          .withIndex("by_category", (q) => q.eq("categoryId", cat._id))
+          .collect();
+        
+        // Get published posts count
+        const publishedCount = await Promise.all(
+          pivots.map(async (pivot) => {
+            const post = await ctx.db.get(pivot.postId);
+            return post?.isPublished ? 1 : 0;
+          })
+        ).then(counts => counts.reduce((sum, count) => sum + count, 0));
+        
+        return {
+          ...cat,
+          postsCount: publishedCount,
+        };
+      })
+    );
+    
+    return categoriesWithCount;
+  },
+});
+
 // Get by ID
 export const getById = query({
   args: { id: v.id("postCategories") },
@@ -167,28 +202,56 @@ export const syncPostCategories = mutation({
   },
 });
 
-// Get posts by category (for public page)
-export const getPostsByCategory = query({
-  args: { 
-    categoryId: v.id("postCategories"),
-    paginationOpts: v.optional(v.object({
-      numItems: v.number(),
-      cursor: v.union(v.string(), v.null()),
-    })),
-  },
-  handler: async (ctx, { categoryId, paginationOpts }) => {
-    const limit = paginationOpts?.numItems || 20;
-    
-    // Get pivot records for this category
+// Get posts in category (for edit page)
+export const getPostsInCategory = query({
+  args: { categoryId: v.id("postCategories") },
+  handler: async (ctx, { categoryId }) => {
     const pivots = await ctx.db
       .query("postCategoryPivot")
       .withIndex("by_category", (q) => q.eq("categoryId", categoryId))
       .collect();
     
-    // Get all post IDs
+    const posts = await Promise.all(
+      pivots.map(async (pivot) => {
+        const post = await ctx.db.get(pivot.postId);
+        return post;
+      })
+    );
+    
+    return posts.filter((p): p is NonNullable<typeof p> => p !== null);
+  },
+});
+
+// Remove post from category
+export const removePostFromCategory = mutation({
+  args: {
+    postId: v.id("posts"),
+    categoryId: v.id("postCategories"),
+  },
+  handler: async (ctx, { postId, categoryId }) => {
+    const pivot = await ctx.db
+      .query("postCategoryPivot")
+      .withIndex("by_post_category", (q) => 
+        q.eq("postId", postId).eq("categoryId", categoryId)
+      )
+      .first();
+    
+    if (pivot) {
+      await ctx.db.delete(pivot._id);
+    }
+  },
+});
+// Get posts by category (for public page) - returns all posts in category
+export const getPostsByCategory = query({
+  args: { categoryId: v.id("postCategories") },
+  handler: async (ctx, { categoryId }) => {
+    const pivots = await ctx.db
+      .query("postCategoryPivot")
+      .withIndex("by_category", (q) => q.eq("categoryId", categoryId))
+      .collect();
+    
     const postIds = pivots.map(p => p.postId);
     
-    // Fetch posts and filter published
     const posts = await Promise.all(
       postIds.map(async (postId) => {
         const post = await ctx.db.get(postId);

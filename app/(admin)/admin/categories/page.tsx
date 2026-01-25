@@ -9,7 +9,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 
 export default function CategoriesPage() {
-  const categories = useQuery(api.postCategories.list);
+  const categories = useQuery(api.postCategories.listWithCount);
   const removeCategory = useMutation(api.postCategories.remove);
   const bulkRemoveCategories = useMutation(api.postCategories.bulkRemove);
   const [search, setSearch] = useState('');
@@ -17,6 +17,7 @@ export default function CategoriesPage() {
   const [visibleColumns, setVisibleColumns] = useState({
     name: true,
     slug: false,
+    postsCount: true,
   });
   const [showColumnMenu, setShowColumnMenu] = useState(false);
 
@@ -105,7 +106,7 @@ export default function CategoriesPage() {
                       className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                     />
                     <span className="text-sm text-slate-700 dark:text-slate-300 capitalize">
-                      {key === 'name' ? 'Tên' : 'Slug'}
+                      {key === 'name' ? 'Tên' : key === 'slug' ? 'Slug' : 'Số bài viết'}
                     </span>
                   </label>
                 ))}
@@ -141,6 +142,9 @@ export default function CategoriesPage() {
                 {visibleColumns.slug && (
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Slug</th>
                 )}
+                {visibleColumns.postsCount && (
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-32">Số bài viết</th>
+                )}
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
@@ -172,6 +176,13 @@ export default function CategoriesPage() {
                   )}
                   {visibleColumns.slug && (
                     <td className="px-4 py-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{cat.slug}</td>
+                  )}
+                  {visibleColumns.postsCount && (
+                    <td className="px-4 py-4">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        {cat.postsCount} bài
+                      </span>
+                    </td>
                   )}
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-end gap-1">

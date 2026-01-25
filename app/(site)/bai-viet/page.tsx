@@ -26,14 +26,22 @@ export default function PostsListPage() {
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [showSortMenu, setShowSortMenu] = useState(false);
   
-  const result = useQuery(api.posts.getPublished, {
-    paginationOpts: { numItems: 12, cursor: currentCursor },
+  // Fetch posts based on selected category
+  const allPublishedPosts = useQuery(api.posts.getPublished, {
+    paginationOpts: { numItems: 100, cursor: null }, // Get more for client-side filtering
   });
+  const categoryFilteredPosts = useQuery(
+    selectedCategory ? api.postCategories.getPostsByCategory : null,
+    selectedCategory ? { categoryId: selectedCategory as any } : "skip"
+  );
 
-  const posts = result?.page || [];
-  const hasMore = result?.isDone === false;
-  const continueCursor = result?.continueCursor;
-  const isLoading = result === undefined;
+  const posts = selectedCategory 
+    ? (categoryFilteredPosts || [])
+    : (allPublishedPosts?.page || []);
+  
+  const isLoading = selectedCategory 
+    ? categoryFilteredPosts === undefined
+    : allPublishedPosts === undefined;
 
   const filtered = useMemo(() => {
     if (!posts) return [];
