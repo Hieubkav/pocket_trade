@@ -3,13 +3,17 @@ import { query, mutation } from "./_generated/server";
 
 // ============ OPTIMIZED: Chỉ load traders liên quan ============
 export const listByChat = query({
-  args: { chatId: v.id("chats") },
+  args: { 
+    chatId: v.id("chats"),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
+    const maxLimit = args.limit || 500; // Reasonable limit for messages
     const messages = await ctx.db
       .query("messages")
       .withIndex("by_chat", (q) => q.eq("chatId", args.chatId))
       .order("asc")
-      .collect();
+      .take(maxLimit);
 
     if (messages.length === 0) return [];
 
@@ -71,14 +75,16 @@ export const markAsRead = mutation({
     const messages = await ctx.db
       .query("messages")
       .withIndex("by_chat", (q) => q.eq("chatId", args.chatId))
-      .collect();
+      .take(500); // Reasonable limit
 
-    // Đánh dấu đã đọc các tin nhắn từ người khác
-    for (const msg of messages) {
-      if (msg.senderId !== args.traderId && !msg.isRead) {
-        await ctx.db.patch(msg._id, { isRead: true });
-      }
-    }
+    // Batch update: Đánh dấu đã đọc các tin nhắn từ người khác
+    const messagesToUpdate = messages.filter(
+      msg => msg.senderId !== args.traderId && !msg.isRead
+    );
+    
+    await Promise.all(
+      messagesToUpdate.map(msg => ctx.db.patch(msg._id, { isRead: true }))
+    );
   },
 });
 
@@ -86,10 +92,10 @@ export const markAsRead = mutation({
 export const countUnread = query({
   args: { traderId: v.id("traders") },
   handler: async (ctx, args) => {
-    // Lấy tất cả chats của trader
+    // Lấy tất cả chats của trader (với limit)
     const [asHost, asGuest] = await Promise.all([
-      ctx.db.query("chats").withIndex("by_host", (q) => q.eq("traderHostId", args.traderId)).collect(),
-      ctx.db.query("chats").withIndex("by_guest", (q) => q.eq("traderGuestId", args.traderId)).collect(),
+      ctx.db.query("chats").withIndex("by_host", (q) => q.eq("traderHostId", args.traderId)).take(100),
+      ctx.db.query("chats").withIndex("by_guest", (q) => q.eq("traderGuestId", args.traderId)).take(100),
     ]);
 
     const allChats = [...asHost, ...asGuest];
@@ -102,7 +108,7 @@ export const countUnread = query({
       uniqueChatIds.map(chatId =>
         ctx.db.query("messages")
           .withIndex("by_chat", (q) => q.eq("chatId", chatId))
-          .collect()
+          .take(200) // Reasonable limit per chat
       )
     );
 

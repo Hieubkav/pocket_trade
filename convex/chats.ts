@@ -3,12 +3,16 @@ import { query, mutation } from "./_generated/server";
 
 // ============ OPTIMIZED: Chỉ load data liên quan ============
 export const listByTrader = query({
-  args: { traderId: v.id("traders") },
+  args: { 
+    traderId: v.id("traders"),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
+    const maxLimit = args.limit || 100;
     // Lấy chats mà trader là host hoặc guest (dùng index)
     const [asHost, asGuest] = await Promise.all([
-      ctx.db.query("chats").withIndex("by_host", (q) => q.eq("traderHostId", args.traderId)).collect(),
-      ctx.db.query("chats").withIndex("by_guest", (q) => q.eq("traderGuestId", args.traderId)).collect(),
+      ctx.db.query("chats").withIndex("by_host", (q) => q.eq("traderHostId", args.traderId)).take(maxLimit),
+      ctx.db.query("chats").withIndex("by_guest", (q) => q.eq("traderGuestId", args.traderId)).take(maxLimit),
     ]);
 
     const allChats = [...asHost, ...asGuest];
@@ -44,7 +48,7 @@ export const listByTrader = query({
         ctx.db.query("messages")
           .withIndex("by_chat", (q) => q.eq("chatId", chatId))
           .order("desc")
-          .collect()
+          .take(100) // Reasonable limit per chat
       )
     );
     const messagesMap = new Map(chatIds.map((id, i) => [id, messagesArrays[i]]));

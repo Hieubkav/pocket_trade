@@ -2,10 +2,13 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    const seriesList = await ctx.db.query("series").collect();
-    const sets = await ctx.db.query("sets").collect();
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const maxLimit = args.limit || 100;
+    const seriesList = await ctx.db.query("series").take(maxLimit);
+    const sets = await ctx.db.query("sets").take(1000); // Reasonable limit for sets
     
     return seriesList.map(series => {
       const setCount = sets.filter(s => s.seriesId === series._id).length;
@@ -54,9 +57,7 @@ export const remove = mutation({
 export const bulkRemove = mutation({
   args: { ids: v.array(v.id("series")) },
   handler: async (ctx, args) => {
-    for (const id of args.ids) {
-      await ctx.db.delete(id);
-    }
+    await Promise.all(args.ids.map(id => ctx.db.delete(id)));
     return { deleted: args.ids.length };
   },
 });

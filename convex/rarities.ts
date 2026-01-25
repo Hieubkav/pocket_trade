@@ -2,9 +2,12 @@ import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("rarities").collect();
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const maxLimit = args.limit || 100;
+    return await ctx.db.query("rarities").take(maxLimit);
   },
 });
 
@@ -47,9 +50,7 @@ export const remove = mutation({
 export const bulkRemove = mutation({
   args: { ids: v.array(v.id("rarities")) },
   handler: async (ctx, args) => {
-    for (const id of args.ids) {
-      await ctx.db.delete(id);
-    }
+    await Promise.all(args.ids.map(id => ctx.db.delete(id)));
     return { deleted: args.ids.length };
   },
 });
@@ -72,14 +73,10 @@ export const seed = mutation({
   handler: async (ctx) => {
     // Xóa dữ liệu cũ
     const existing = await ctx.db.query("rarities").collect();
-    for (const rarity of existing) {
-      await ctx.db.delete(rarity._id);
-    }
+    await Promise.all(existing.map(rarity => ctx.db.delete(rarity._id)));
 
     // Thêm dữ liệu mới
-    for (const rarity of RARITIES_DATA) {
-      await ctx.db.insert("rarities", rarity);
-    }
+    await Promise.all(RARITIES_DATA.map(rarity => ctx.db.insert("rarities", rarity)));
 
     return {
       success: true,

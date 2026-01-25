@@ -15,9 +15,18 @@ function simpleHash(str: string): string {
 }
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("admins").collect();
+  args: {
+    paginationOpts: v.optional(v.object({
+      numItems: v.number(),
+      cursor: v.union(v.string(), v.null()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.paginationOpts?.numItems || 50;
+    return await ctx.db
+      .query("admins")
+      .order("desc")
+      .paginate(args.paginationOpts || { numItems: limit, cursor: null });
   },
 });
 

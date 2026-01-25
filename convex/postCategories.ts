@@ -4,44 +4,65 @@ import { Id } from "./_generated/dataModel";
 
 // List all categories
 export const list = query({
-  handler: async (ctx) => {
-    return await ctx.db
-      .query("postCategories")
-      .order("desc")
-      .collect();
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const query = ctx.db.query("postCategories").order("desc");
+    if (args.limit) {
+      return await query.take(args.limit);
+    }
+    return await query.take(100); // Default limit 100
   },
 });
 
 // List all categories with post count
 export const listWithCount = query({
-  handler: async (ctx) => {
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const maxLimit = args.limit || 100;
     const categories = await ctx.db
       .query("postCategories")
       .order("desc")
+      .take(maxLimit);
+    
+    // Get all pivots for these categories in one batch
+    const categoryIds = categories.map(c => c._id);
+    const allPivots = await ctx.db
+      .query("postCategoryPivot")
       .collect();
     
-    // Get post count for each category
-    const categoriesWithCount = await Promise.all(
-      categories.map(async (cat) => {
-        const pivots = await ctx.db
-          .query("postCategoryPivot")
-          .withIndex("by_category", (q) => q.eq("categoryId", cat._id))
-          .collect();
-        
-        // Get published posts count
-        const publishedCount = await Promise.all(
-          pivots.map(async (pivot) => {
-            const post = await ctx.db.get(pivot.postId);
-            return post?.isPublished ? 1 as const : 0 as const;
-          })
-        ).then(counts => counts.reduce((sum, count) => sum + count, 0 as number));
-        
-        return {
-          ...cat,
-          postsCount: publishedCount,
-        };
-      })
-    );
+    // Group pivots by category
+    const pivotsByCategory = new Map<Id<"postCategories">, typeof allPivots>();
+    for (const pivot of allPivots) {
+      if (categoryIds.includes(pivot.categoryId)) {
+        if (!pivotsByCategory.has(pivot.categoryId)) {
+          pivotsByCategory.set(pivot.categoryId, []);
+        }
+        pivotsByCategory.get(pivot.categoryId)!.push(pivot);
+      }
+    }
+    
+    // Batch fetch all posts
+    const allPostIds = [...new Set(allPivots.map(p => p.postId))];
+    const postsRaw = await Promise.all(allPostIds.map(id => ctx.db.get(id)));
+    const postsMap = new Map(postsRaw.filter(Boolean).map(p => [p!._id, p!]));
+    
+    // Calculate counts
+    const categoriesWithCount = categories.map((cat) => {
+      const pivots = pivotsByCategory.get(cat._id) || [];
+      const publishedCount = pivots.filter(pivot => {
+        const post = postsMap.get(pivot.postId);
+        return post?.isPublished;
+      }).length;
+      
+      return {
+        ...cat,
+        postsCount: publishedCount,
+      };
+    });
     
     return categoriesWithCount;
   },
@@ -132,9 +153,9 @@ export const remove = mutation({
       .query("postCategoryPivot")
       .withIndex("by_category", (q) => q.eq("categoryId", id))
       .collect();
-    for (const pivot of pivots) {
-      await ctx.db.delete(pivot._id);
-    }
+    
+    // Batch delete pivots
+    await Promise.all(pivots.map(pivot => ctx.db.delete(pivot._id)));
     
     await ctx.db.delete(id);
   },
@@ -144,18 +165,15 @@ export const remove = mutation({
 export const bulkRemove = mutation({
   args: { ids: v.array(v.id("postCategories")) },
   handler: async (ctx, { ids }) => {
-    for (const id of ids) {
-      // Remove all pivot records
-      const pivots = await ctx.db
-        .query("postCategoryPivot")
-        .withIndex("by_category", (q) => q.eq("categoryId", id))
-        .collect();
-      for (const pivot of pivots) {
-        await ctx.db.delete(pivot._id);
-      }
-      
-      await ctx.db.delete(id);
-    }
+    // Get all pivots for all categories in one query
+    const allPivots = await ctx.db.query("postCategoryPivot").collect();
+    const pivotsToDelete = allPivots.filter(p => ids.includes(p.categoryId));
+    
+    // Batch delete all pivots and categories
+    await Promise.all([
+      ...pivotsToDelete.map(pivot => ctx.db.delete(pivot._id)),
+      ...ids.map(id => ctx.db.delete(id))
+    ]);
   },
 });
 
@@ -168,14 +186,11 @@ export const getPostCategories = query({
       .withIndex("by_post", (q) => q.eq("postId", postId))
       .collect();
     
-    const categories = await Promise.all(
-      pivots.map(async (pivot) => {
-        const category = await ctx.db.get(pivot.categoryId);
-        return category;
-      })
-    );
+    // Batch fetch categories
+    const categoryIds = pivots.map(p => p.categoryId);
+    const categories = await Promise.all(categoryIds.map(id => ctx.db.get(id)));
     
-    return categories.filter((c) => c !== null);
+    return categories.filter((c): c is NonNullable<typeof c> => c !== null);
   },
 });
 
@@ -191,32 +206,33 @@ export const syncPostCategories = mutation({
       .query("postCategoryPivot")
       .withIndex("by_post", (q) => q.eq("postId", postId))
       .collect();
-    for (const pivot of existing) {
-      await ctx.db.delete(pivot._id);
-    }
     
-    // Add new
-    for (const categoryId of categoryIds) {
-      await ctx.db.insert("postCategoryPivot", { postId, categoryId });
-    }
+    // Batch operations
+    await Promise.all([
+      ...existing.map(pivot => ctx.db.delete(pivot._id)),
+      ...categoryIds.map(categoryId => 
+        ctx.db.insert("postCategoryPivot", { postId, categoryId })
+      )
+    ]);
   },
 });
 
 // Get posts in category (for edit page)
 export const getPostsInCategory = query({
-  args: { categoryId: v.id("postCategories") },
-  handler: async (ctx, { categoryId }) => {
+  args: { 
+    categoryId: v.id("postCategories"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { categoryId, limit }) => {
+    const maxLimit = limit || 100;
     const pivots = await ctx.db
       .query("postCategoryPivot")
       .withIndex("by_category", (q) => q.eq("categoryId", categoryId))
-      .collect();
+      .take(maxLimit);
     
-    const posts = await Promise.all(
-      pivots.map(async (pivot) => {
-        const post = await ctx.db.get(pivot.postId);
-        return post;
-      })
-    );
+    // Batch fetch posts
+    const postIds = pivots.map(p => p.postId);
+    const posts = await Promise.all(postIds.map(id => ctx.db.get(id)));
     
     return posts.filter((p): p is NonNullable<typeof p> => p !== null);
   },
@@ -243,25 +259,29 @@ export const removePostFromCategory = mutation({
 });
 // Get posts by category (for public page) - returns all posts in category
 export const getPostsByCategory = query({
-  args: { categoryId: v.id("postCategories") },
-  handler: async (ctx, { categoryId }) => {
+  args: { 
+    categoryId: v.id("postCategories"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { categoryId, limit }) => {
+    const maxLimit = limit || 100;
     const pivots = await ctx.db
       .query("postCategoryPivot")
       .withIndex("by_category", (q) => q.eq("categoryId", categoryId))
-      .collect();
+      .take(maxLimit);
     
+    // Batch fetch posts
     const postIds = pivots.map(p => p.postId);
-    
-    const posts = await Promise.all(
-      postIds.map(async (postId) => {
-        const post = await ctx.db.get(postId);
-        return post;
-      })
-    );
+    const posts = await Promise.all(postIds.map(id => ctx.db.get(id)));
     
     // Filter published and sort by date desc
     const published = posts
       .filter((p): p is NonNullable<typeof p> => p !== null && p.isPublished)
+      .sort((a, b) => b.createdAt - a.createdAt);
+    
+    return published;
+  },
+});
       .sort((a, b) => b.createdAt - a.createdAt);
     
     return published;

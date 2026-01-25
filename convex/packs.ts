@@ -3,12 +3,15 @@ import { query, mutation } from "./_generated/server";
 
 // ============ ADMIN: Cần đếm chính xác cardCount ============
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const maxLimit = args.limit || 500;
     const [packs, sets, cards] = await Promise.all([
-      ctx.db.query("packs").collect(),
-      ctx.db.query("sets").collect(),
-      ctx.db.query("cards").collect(),
+      ctx.db.query("packs").take(maxLimit),
+      ctx.db.query("sets").take(500),
+      ctx.db.query("cards").take(5000), // Reasonable limit for cards
     ]);
     
     const setMap = new Map(sets.map(s => [s._id, s]));
@@ -72,9 +75,7 @@ export const remove = mutation({
 export const bulkRemove = mutation({
   args: { ids: v.array(v.id("packs")) },
   handler: async (ctx, args) => {
-    for (const id of args.ids) {
-      await ctx.db.delete(id);
-    }
+    await Promise.all(args.ids.map(id => ctx.db.delete(id)));
     return { deleted: args.ids.length };
   },
 });
