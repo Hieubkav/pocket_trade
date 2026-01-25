@@ -110,18 +110,14 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
   const router = useRouter();
   const post = useQuery(api.posts.getBySlug, { slug });
   const postCategories = useQuery(
-    post?._id ? api.postCategories.getPostCategories : null,
+    api.postCategories.getPostCategories,
     post?._id ? { postId: post._id } : "skip"
   );
   
-  // Get related posts from same categories
+  const firstCategoryId = postCategories?.[0]?._id;
   const relatedPostIds = useQuery(
-    postCategories && postCategories.length > 0 && postCategories[0]?._id
-      ? api.postCategories.getPostsByCategory
-      : null,
-    postCategories && postCategories.length > 0 && postCategories[0]?._id
-      ? { categoryId: postCategories[0]._id }
-      : "skip"
+    api.postCategories.getPostsByCategory,
+    firstCategoryId ? { categoryId: firstCategoryId } : "skip"
   );
   
   // Filter out current post from related
