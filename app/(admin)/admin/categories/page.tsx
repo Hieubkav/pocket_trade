@@ -9,7 +9,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 
 export default function CategoriesPage() {
-  const categories = useQuery(api.postCategories.listWithCount);
+  const categories = useQuery(api.postCategories.listWithCount, {});
   const removeCategory = useMutation(api.postCategories.remove);
   const bulkRemoveCategories = useMutation(api.postCategories.bulkRemove);
   const [search, setSearch] = useState('');

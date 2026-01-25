@@ -13,8 +13,8 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100, 'all'] as const;
 type PageSize = typeof PAGE_SIZE_OPTIONS[number];
 
 export default function PacksPage() {
-  const packs = useQuery(api.packs.list);
-  const sets = useQuery(api.sets.list);
+  const packs = useQuery(api.packs.list, {});
+  const sets = useQuery(api.sets.list, {});
   const removePack = useMutation(api.packs.remove);
   const bulkRemovePacks = useMutation(api.packs.bulkRemove);
   const [search, setSearch] = useState('');

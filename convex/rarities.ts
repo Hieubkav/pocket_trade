@@ -6,7 +6,7 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const maxLimit = args.limit || 100;
+    const maxLimit = args?.limit || 100;
     return await ctx.db.query("rarities").take(maxLimit);
   },
 });

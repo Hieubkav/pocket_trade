@@ -15,7 +15,7 @@ export default function EditSetPage() {
   const id = params.id as Id<'sets'>;
 
   const set = useQuery(api.sets.getById, { id });
-  const seriesList = useQuery(api.series.list);
+  const seriesList = useQuery(api.series.list, {});
   const updateSet = useMutation(api.sets.update);
   const markFileUsed = useMutation(api.files.markFileUsed);
   const deleteFile = useMutation(api.files.deleteFile);

@@ -14,7 +14,7 @@ export default function EditPackPage() {
   const id = params.id as Id<'packs'>;
 
   const pack = useQuery(api.packs.getById, { id });
-  const setsList = useQuery(api.sets.list);
+  const setsList = useQuery(api.sets.list, {});
   const updatePack = useMutation(api.packs.update);
 
   const [name, setName] = useState('');

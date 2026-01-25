@@ -282,8 +282,3 @@ export const getPostsByCategory = query({
     return published;
   },
 });
-      .sort((a, b) => b.createdAt - a.createdAt);
-    
-    return published;
-  },
-});

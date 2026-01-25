@@ -11,8 +11,8 @@ import ImageUpload from '@/app/components/ImageUpload';
 
 export default function NewCardPage() {
   const router = useRouter();
-  const raritiesList = useQuery(api.rarities.list);
-  const packsList = useQuery(api.packs.list);
+  const raritiesList = useQuery(api.rarities.list, {});
+  const packsList = useQuery(api.packs.list, {});
   const createCard = useMutation(api.cards.create);
   const markFileUsed = useMutation(api.files.markFileUsed);
 

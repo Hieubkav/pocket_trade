@@ -11,7 +11,7 @@ import ImageUpload from '@/app/components/ImageUpload';
 
 export default function NewSetPage() {
   const router = useRouter();
-  const seriesList = useQuery(api.series.list);
+  const seriesList = useQuery(api.series.list, {});
   const createSet = useMutation(api.sets.create);
   const markFileUsed = useMutation(api.files.markFileUsed);
 

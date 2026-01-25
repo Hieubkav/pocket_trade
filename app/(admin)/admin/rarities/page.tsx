@@ -9,7 +9,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { toast } from 'sonner';
 
 export default function RaritiesPage() {
-  const rarities = useQuery(api.rarities.list);
+  const rarities = useQuery(api.rarities.list, {});
   const removeRarity = useMutation(api.rarities.remove);
   const bulkRemoveRarities = useMutation(api.rarities.bulkRemove);
   const seedRarities = useMutation(api.rarities.seed);

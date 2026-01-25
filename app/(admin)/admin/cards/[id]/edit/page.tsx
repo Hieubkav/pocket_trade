@@ -15,8 +15,8 @@ export default function EditCardPage() {
   const id = params.id as Id<'cards'>;
 
   const card = useQuery(api.cards.getById, { id });
-  const raritiesList = useQuery(api.rarities.list);
-  const packsList = useQuery(api.packs.list);
+  const raritiesList = useQuery(api.rarities.list, {});
+  const packsList = useQuery(api.packs.list, {});
   const updateCard = useMutation(api.cards.update);
   const markFileUsed = useMutation(api.files.markFileUsed);
   const deleteFile = useMutation(api.files.deleteFile);

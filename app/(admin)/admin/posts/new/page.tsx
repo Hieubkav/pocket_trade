@@ -27,7 +27,7 @@ export default function NewPostPage() {
   const createPost = useMutation(api.posts.create);
   const markFileUsed = useMutation(api.files.markFileUsed);
   const syncPostCategories = useMutation(api.postCategories.syncPostCategories);
-  const categories = useQuery(api.postCategories.list);
+  const categories = useQuery(api.postCategories.list, {});
   
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');

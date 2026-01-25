@@ -10,7 +10,7 @@ import { Id } from '@/convex/_generated/dataModel';
 
 export default function NewPackPage() {
   const router = useRouter();
-  const setsList = useQuery(api.sets.list);
+  const setsList = useQuery(api.sets.list, {});
   const createPack = useMutation(api.packs.create);
 
   const [name, setName] = useState('');

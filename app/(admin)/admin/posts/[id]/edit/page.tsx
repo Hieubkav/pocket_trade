@@ -19,7 +19,7 @@ export default function EditPostPage() {
   const id = params.id as Id<"posts">;
   const post = useQuery(api.posts.getById, { id });
   const postCategories = useQuery(api.postCategories.getPostCategories, { postId: id });
-  const categories = useQuery(api.postCategories.list);
+  const categories = useQuery(api.postCategories.list, {});
   const updatePost = useMutation(api.posts.update);
   const markFileUsed = useMutation(api.files.markFileUsed);
   const releaseFile = useMutation(api.files.releaseFile);

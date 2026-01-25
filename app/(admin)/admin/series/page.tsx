@@ -12,7 +12,7 @@ type SortField = 'name' | 'setCount';
 type SortDir = 'asc' | 'desc';
 
 export default function SeriesPage() {
-  const seriesList = useQuery(api.series.list);
+  const seriesList = useQuery(api.series.list, {});
   const removeSeries = useMutation(api.series.remove);
   const bulkRemoveSeries = useMutation(api.series.bulkRemove);
   const [search, setSearch] = useState('');

@@ -20,7 +20,7 @@ type SortOption = 'newest' | 'oldest' | 'a-z' | 'z-a';
 
 export default function PostsListPage() {
   const { t } = useLocale();
-  const categories = useQuery(api.postCategories.list);
+  const categories = useQuery(api.postCategories.list, {});
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);

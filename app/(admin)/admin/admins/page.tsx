@@ -11,13 +11,16 @@ import { useAdminSession } from '../hooks/useAdminSession';
 
 export default function AdminsPage() {
   const { admin: currentAdmin } = useAdminSession();
-  const admins = useQuery(api.admins.list);
+  const admins = useQuery(api.admins.list, {
+    paginationOpts: { numItems: 100, cursor: null }
+  });
   const removeAdmin = useMutation(api.admins.remove);
   
   const [search, setSearch] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const filteredAdmins = admins?.filter(
+  const adminsList = admins?.page || [];
+  const filteredAdmins = adminsList?.filter(
     (admin) =>
       admin.username.toLowerCase().includes(search.toLowerCase()) ||
       admin.email.toLowerCase().includes(search.toLowerCase())

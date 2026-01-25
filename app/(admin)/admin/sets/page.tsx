@@ -13,8 +13,8 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50, 100, 'all'] as const;
 type PageSize = typeof PAGE_SIZE_OPTIONS[number];
 
 export default function SetsPage() {
-  const sets = useQuery(api.sets.list);
-  const seriesList = useQuery(api.series.list);
+  const sets = useQuery(api.sets.list, {});
+  const seriesList = useQuery(api.series.list, {});
   const removeSet = useMutation(api.sets.remove);
   const bulkRemoveSets = useMutation(api.sets.bulkRemove);
   const reorderSets = useMutation(api.sets.reorder);
