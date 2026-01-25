@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Settings2 } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -14,6 +14,11 @@ export default function CategoriesPage() {
   const bulkRemoveCategories = useMutation(api.postCategories.bulkRemove);
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<Id<"postCategories">>>(new Set());
+  const [visibleColumns, setVisibleColumns] = useState({
+    name: true,
+    slug: false,
+  });
+  const [showColumnMenu, setShowColumnMenu] = useState(false);
 
   const filtered = useMemo(() => {
     if (!categories) return [];
@@ -81,6 +86,32 @@ export default function CategoriesPage() {
               className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200"
             />
           </div>
+          <div className="relative">
+            <button
+              onClick={() => setShowColumnMenu(!showColumnMenu)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium"
+            >
+              <Settings2 size={16} />
+              <span>Cột</span>
+            </button>
+            {showColumnMenu && (
+              <div className="absolute right-0 top-12 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-2 z-10">
+                {Object.entries(visibleColumns).map(([key, value]) => (
+                  <label key={key} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={value}
+                      onChange={(e) => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))}
+                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-300 capitalize">
+                      {key === 'name' ? 'Tên' : 'Slug'}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
           {selectedIds.size > 0 && (
             <button
               onClick={handleBulkDelete}
@@ -104,21 +135,23 @@ export default function CategoriesPage() {
                     className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                   />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-20">Ảnh</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tên</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Slug</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-24">Thứ tự</th>
+                {visibleColumns.name && (
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tên</th>
+                )}
+                {visibleColumns.slug && (
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Slug</th>
+                )}
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {!categories ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
                     {search ? 'Không tìm thấy danh mục nào' : 'Chưa có danh mục nào'}
                   </td>
                 </tr>
@@ -132,23 +165,14 @@ export default function CategoriesPage() {
                       className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                     />
                   </td>
-                  <td className="px-4 py-4">
-                    {cat.imageUrl ? (
-                      <img src={cat.imageUrl} alt={cat.name} className="h-10 w-16 rounded object-cover" />
-                    ) : (
-                      <div className="h-10 w-16 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs text-slate-400">
-                        IMG
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-4">
-                    <p className="font-medium text-slate-900 dark:text-white">{cat.name}</p>
-                    {cat.description && (
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-1">{cat.description}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{cat.slug}</td>
-                  <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{cat.order || '-'}</td>
+                  {visibleColumns.name && (
+                    <td className="px-4 py-4">
+                      <p className="font-medium text-slate-900 dark:text-white">{cat.name}</p>
+                    </td>
+                  )}
+                  {visibleColumns.slug && (
+                    <td className="px-4 py-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{cat.slug}</td>
+                  )}
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-end gap-1">
                       <Link 

@@ -202,10 +202,7 @@ export default defineSchema({
   // 18. Post Categories (Danh mục bài viết)
   postCategories: defineTable({
     name: v.string(),
-    slug: v.string(),
-    description: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
-    order: v.optional(v.number()),
+    slug: v.string(), // Auto-generated from name
   }).index("by_slug", ["slug"]),
 
   // 19. Post-Category Pivot (Many-to-many)

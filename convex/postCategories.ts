@@ -5,10 +5,10 @@ import { Id } from "./_generated/dataModel";
 // List all categories
 export const list = query({
   handler: async (ctx) => {
-    const categories = await ctx.db
+    return await ctx.db
       .query("postCategories")
+      .order("desc")
       .collect();
-    return categories.sort((a, b) => (a.order || 999) - (b.order || 999));
   },
 });
 
@@ -35,22 +35,27 @@ export const getBySlug = query({
 export const create = mutation({
   args: {
     name: v.string(),
-    slug: v.string(),
-    description: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
-    order: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { name }) => {
+    // Auto-generate slug
+    const slug = name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    
     // Check slug unique
     const existing = await ctx.db
       .query("postCategories")
-      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
       .first();
     if (existing) {
-      throw new Error("Slug đã tồn tại");
+      throw new Error("Tên danh mục đã tồn tại (slug trùng)");
     }
     
-    return await ctx.db.insert("postCategories", args);
+    return await ctx.db.insert("postCategories", { name, slug });
   },
 });
 
@@ -59,22 +64,27 @@ export const update = mutation({
   args: {
     id: v.id("postCategories"),
     name: v.string(),
-    slug: v.string(),
-    description: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
-    order: v.optional(v.number()),
   },
-  handler: async (ctx, { id, ...data }) => {
+  handler: async (ctx, { id, name }) => {
+    // Auto-generate slug
+    const slug = name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    
     // Check slug unique (except current)
     const existing = await ctx.db
       .query("postCategories")
-      .withIndex("by_slug", (q) => q.eq("slug", data.slug))
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
       .first();
     if (existing && existing._id !== id) {
-      throw new Error("Slug đã tồn tại");
+      throw new Error("Tên danh mục đã tồn tại (slug trùng)");
     }
     
-    await ctx.db.patch(id, data);
+    await ctx.db.patch(id, { name, slug });
   },
 });
 
