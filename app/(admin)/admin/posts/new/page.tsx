@@ -48,8 +48,16 @@ export default function NewPostPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !slug || !content) {
-      toast.error('Vui lòng điền đầy đủ thông tin');
+    if (!title || !slug) {
+      toast.error('Vui lòng điền tiêu đề và slug');
+      return;
+    }
+    if (!isMarkdown && !content) {
+      toast.error('Vui lòng điền nội dung');
+      return;
+    }
+    if (isMarkdown && !markdownContent) {
+      toast.error('Vui lòng điền nội dung markdown');
       return;
     }
     setIsSubmitting(true);
