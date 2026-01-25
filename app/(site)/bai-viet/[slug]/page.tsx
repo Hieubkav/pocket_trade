@@ -72,12 +72,14 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
     if (!post) return;
     
     const url = window.location.href;
-    const title = post.title;
-    const description = extractTextFromHTML(post.content, 150);
     
-    const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(`${title}\n\n${description}`)}`;
+    // Facebook Share Dialog API
+    const shareUrl = `https://www.facebook.com/dialog/share?app_id=YOUR_APP_ID&display=popup&href=${encodeURIComponent(url)}&redirect_uri=${encodeURIComponent(url)}`;
     
-    window.open(shareUrl, '_blank', 'width=600,height=400');
+    // Fallback: Use sharer.php (simpler, no app_id required)
+    const fallbackUrl = `https://www.facebook.com/sharer.php?u=${encodeURIComponent(url)}`;
+    
+    window.open(fallbackUrl, 'facebook-share-dialog', 'width=626,height=436');
     toast.success('Đã mở cửa sổ chia sẻ Facebook');
   };
   
@@ -90,40 +92,34 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
 
   if (post === undefined) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
-            <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded" />
-            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full" />
-            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-5/6" />
-          </div>
-        </div>
+      <div className="space-y-4 animate-pulse">
+        <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
+        <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded" />
+        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full" />
+        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-5/6" />
       </div>
     );
   }
 
   if (post === null || !post.isPublished) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 flex items-center justify-center">
-        <div className="text-center px-4">
-          <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Eye className="w-10 h-10 text-slate-400" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-            Không tìm thấy bài viết
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mb-6">
-            Bài viết này không tồn tại hoặc đã bị ẩn
-          </p>
-          <Link
-            href="/bai-viet"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors font-medium"
-          >
-            <ArrowLeft size={20} />
-            Quay lại danh sách
-          </Link>
+      <div className="text-center py-12 px-4">
+        <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Eye className="w-10 h-10 text-slate-400" />
         </div>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+          Không tìm thấy bài viết
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400 mb-6">
+          Bài viết này không tồn tại hoặc đã bị ẩn
+        </p>
+        <Link
+          href="/bai-viet"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 transition-colors font-medium"
+        >
+          <ArrowLeft size={20} />
+          Quay lại danh sách
+        </Link>
       </div>
     );
   }
@@ -131,41 +127,39 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
   const related = relatedPosts?.page?.filter(p => p._id !== post._id).slice(0, 3) || [];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <button
-            onClick={() => router.back()}
-            className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-          >
-            <ArrowLeft size={20} />
-            <span className="font-medium">Quay lại</span>
-          </button>
-          
-          <button
-            onClick={handleShareFacebook}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-          >
-            <Share2 size={18} />
-            <span>Chia sẻ Facebook</span>
-          </button>
-        </div>
-      </div>
+    <div className="space-y-8">
+      <nav className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+        <Link href="/" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+          Trang chủ
+        </Link>
+        <ChevronRight size={16} />
+        <Link href="/bai-viet" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
+          Bài viết
+        </Link>
+        <ChevronRight size={16} />
+        <span className="text-slate-900 dark:text-white font-medium truncate">
+          {post.title}
+        </span>
+      </nav>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        <nav className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          <Link href="/" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-            Trang chủ
-          </Link>
-          <ChevronRight size={16} />
-          <Link href="/bai-viet" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
-            Bài viết
-          </Link>
-          <ChevronRight size={16} />
-          <span className="text-slate-900 dark:text-white font-medium truncate">
-            {post.title}
-          </span>
-        </nav>
+      <div className="flex items-center justify-between gap-4">
+        <button
+          onClick={() => router.back()}
+          className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+        >
+          <ArrowLeft size={20} />
+          <span className="font-medium">Quay lại</span>
+        </button>
+        
+        <button
+          onClick={handleShareFacebook}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+        >
+          <Share2 size={18} />
+          <span className="hidden sm:inline">Chia sẻ Facebook</span>
+          <span className="sm:hidden">Share</span>
+        </button>
+      </div>
 
         <article className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
           {post.imageUrl && (
@@ -237,6 +231,5 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
           </div>
         )}
       </div>
-    </div>
   );
 }

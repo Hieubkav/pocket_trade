@@ -40,6 +40,7 @@ import {
 } from 'lexical';
 import { $patchStyleText } from '@lexical/selection';
 import { $setBlocksType } from '@lexical/selection';
+import { $convertFromMarkdownString, TRANSFORMERS } from '@lexical/markdown';
 import {
   Bold,
   Italic,
@@ -57,6 +58,7 @@ import {
   Quote,
   Image as ImageIcon,
   Loader2,
+  FileCode,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ImagesPlugin, { ImageNode, INSERT_IMAGE_COMMAND } from './nodes/ImageNode';
@@ -205,6 +207,8 @@ function ToolbarPlugin({ onImageUpload }: { onImageUpload?: (file: File) => Prom
   const [fontFamily, setFontFamily] = useState('Inter');
   const [fontColor, setFontColor] = useState('#000000');
   const [isUploading, setIsUploading] = useState(false);
+  const [showMarkdownInput, setShowMarkdownInput] = useState(false);
+  const [markdownText, setMarkdownText] = useState('');
 
   const updateToolbar = useCallback(() => {
     const selection = $getSelection();
@@ -335,6 +339,21 @@ function ToolbarPlugin({ onImageUpload }: { onImageUpload?: (file: File) => Prom
     input.click();
   };
 
+  const handleImportMarkdown = () => {
+    if (!markdownText.trim()) {
+      toast.error('Vui lòng nhập nội dung Markdown');
+      return;
+    }
+    
+    editor.update(() => {
+      $convertFromMarkdownString(markdownText, TRANSFORMERS);
+    });
+    
+    setMarkdownText('');
+    setShowMarkdownInput(false);
+    toast.success('Đã import Markdown thành công');
+  };
+
   const btnClass = (active: boolean) =>
     `p-2 rounded transition-colors ${
       active
@@ -438,6 +457,51 @@ function ToolbarPlugin({ onImageUpload }: { onImageUpload?: (file: File) => Prom
       <button type="button" onClick={handleImageUpload} className={btnClass(false)} title="Tải ảnh lên">
         {isUploading ? <Loader2 size={16} className="animate-spin" /> : <ImageIcon size={16} />}
       </button>
+      
+      <div className="relative">
+        <button type="button" onClick={() => setShowMarkdownInput(!showMarkdownInput)} className={btnClass(showMarkdownInput)} title="Import Markdown">
+          <FileCode size={16} />
+        </button>
+        
+        {showMarkdownInput && (
+          <>
+            <div 
+              className="fixed inset-0 z-10" 
+              onClick={() => setShowMarkdownInput(false)}
+            />
+            <div className="absolute right-0 top-full mt-2 w-96 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-4 z-20">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Nhập Markdown
+              </label>
+              <textarea
+                value={markdownText}
+                onChange={(e) => setMarkdownText(e.target.value)}
+                placeholder="# Tiêu đề&#10;&#10;Nội dung **in đậm** và *in nghiêng*&#10;&#10;- Item 1&#10;- Item 2"
+                className="w-full h-48 px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-200 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 resize-none"
+              />
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={handleImportMarkdown}
+                  className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-sm font-medium"
+                >
+                  Import
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMarkdownText('');
+                    setShowMarkdownInput(false);
+                  }}
+                  className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors text-sm font-medium"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

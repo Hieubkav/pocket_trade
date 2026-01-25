@@ -70,7 +70,6 @@ export default function EditPostPage() {
       }
       
       toast.success('Cập nhật bài viết thành công');
-      router.push('/admin/posts');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Có lỗi xảy ra');
     } finally {
