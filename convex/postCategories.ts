@@ -32,9 +32,9 @@ export const listWithCount = query({
         const publishedCount = await Promise.all(
           pivots.map(async (pivot) => {
             const post = await ctx.db.get(pivot.postId);
-            return post?.isPublished ? 1 : 0;
+            return post?.isPublished ? 1 as const : 0 as const;
           })
-        ).then(counts => counts.reduce((sum, count) => sum + count, 0));
+        ).then(counts => counts.reduce((sum, count) => sum + count, 0 as number));
         
         return {
           ...cat,
