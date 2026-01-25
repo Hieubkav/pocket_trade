@@ -109,9 +109,23 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
   const { slug } = use(params);
   const router = useRouter();
   const post = useQuery(api.posts.getBySlug, { slug });
-  const relatedPosts = useQuery(api.posts.getPublished, {
-    paginationOpts: { numItems: 3, cursor: null },
-  });
+  const postCategories = useQuery(
+    post?._id ? api.postCategories.getPostCategories : null,
+    post?._id ? { postId: post._id } : "skip"
+  );
+  
+  // Get related posts from same categories
+  const relatedPostIds = useQuery(
+    postCategories && postCategories.length > 0 && postCategories[0]?._id
+      ? api.postCategories.getPostsByCategory
+      : null,
+    postCategories && postCategories.length > 0 && postCategories[0]?._id
+      ? { categoryId: postCategories[0]._id }
+      : "skip"
+  );
+  
+  // Filter out current post from related
+  const relatedPosts = relatedPostIds?.filter(p => p._id !== post?._id).slice(0, 3);
 
   const handleShareFacebook = () => {
     if (!post) return;
@@ -169,7 +183,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
     );
   }
 
-  const related = relatedPosts?.page?.filter(p => p._id !== post._id).slice(0, 3) || [];
+  const related = relatedPosts || [];
 
   return (
     <div className="space-y-8">
@@ -186,6 +200,21 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
           {post.title}
         </span>
       </nav>
+
+      {/* Categories */}
+      {postCategories && postCategories.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {postCategories.map((cat: any) => (
+            <Link
+              key={cat._id}
+              href={`/bai-viet`}
+              className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 hover:bg-teal-200 dark:hover:bg-teal-900/50 transition-colors"
+            >
+              {cat.name}
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-4">
         <button
@@ -253,7 +282,12 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
 
         {related.length > 0 && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Bài viết liên quan</h2>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+              Bài viết cùng danh mục
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {postCategories && postCategories.length > 0 && `Danh mục: ${postCategories[0].name}`}
+            </p>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {related.map((relatedPost) => (
