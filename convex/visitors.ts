@@ -72,15 +72,15 @@ export const getStats = query({
   handler: async (ctx, args) => {
     const { currentStart, previousStart, previousEnd } = getTimeRanges(args.timeRange);
     
-    // Dùng index để chỉ lấy visitors trong khoảng thời gian cần thiết
+    // Dùng index để chỉ lấy visitors trong khoảng thời gian cần thiết (với limit reasonable)
     const [currentVisitors, previousVisitors] = await Promise.all([
       ctx.db.query("visitors")
         .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
-        .collect(),
+        .take(10000), // Reasonable limit
       currentStart > 0 
         ? ctx.db.query("visitors")
             .withIndex("by_visited_at", q => q.gte("visitedAt", previousStart).lt("visitedAt", previousEnd))
-            .collect()
+            .take(10000) // Reasonable limit
         : [],
     ]);
     
@@ -111,7 +111,7 @@ export const getChartData = query({
     // Dùng index range query
     const visitors = await ctx.db.query("visitors")
       .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
-      .collect();
+      .take(10000); // Reasonable limit
     
     const grouped: Record<string, number> = {};
     
@@ -152,7 +152,7 @@ export const getTopPages = query({
     
     const visitors = await ctx.db.query("visitors")
       .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
-      .collect();
+      .take(10000); // Reasonable limit
     
     const grouped: Record<string, number> = {};
     visitors.forEach(v => {
@@ -174,7 +174,7 @@ export const getTopReferrers = query({
     
     const visitors = await ctx.db.query("visitors")
       .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
-      .collect();
+      .take(10000); // Reasonable limit
     
     const grouped: Record<string, number> = {};
     visitors.forEach(v => {
@@ -198,7 +198,7 @@ export const getCountryStats = query({
     
     const visitors = await ctx.db.query("visitors")
       .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
-      .collect();
+      .take(10000); // Reasonable limit
     
     const grouped: Record<string, number> = {};
     visitors.forEach(v => {
@@ -234,7 +234,7 @@ export const getDeviceStats = query({
     
     const visitors = await ctx.db.query("visitors")
       .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
-      .collect();
+      .take(10000); // Reasonable limit
     
     const grouped: Record<string, number> = {};
     visitors.forEach(v => {
@@ -265,7 +265,7 @@ export const getOsStats = query({
     
     const visitors = await ctx.db.query("visitors")
       .withIndex("by_visited_at", q => q.gte("visitedAt", currentStart))
-      .collect();
+      .take(10000); // Reasonable limit
     
     const grouped: Record<string, number> = {};
     visitors.forEach(v => {

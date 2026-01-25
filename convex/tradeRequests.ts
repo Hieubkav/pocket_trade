@@ -10,7 +10,7 @@ export const countPendingByPost = query({
       .withIndex("by_trade_post_status", q => 
         q.eq("tradePostId", args.tradePostId).eq("status", "pending")
       )
-      .collect();
+      .take(500); // Reasonable limit
     return requests.length;
   },
 });
@@ -22,7 +22,7 @@ export const listOutgoingByTrader = query({
     const requests = await ctx.db
       .query("tradeRequests")
       .withIndex("by_requester", q => q.eq("requesterId", args.traderId))
-      .collect();
+      .take(500); // Reasonable limit
 
     // Filter trước khi load related data
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
@@ -99,7 +99,7 @@ export const listByPost = query({
     const requests = await ctx.db
       .query("tradeRequests")
       .withIndex("by_trade_post", q => q.eq("tradePostId", args.tradePostId))
-      .collect();
+      .take(500); // Reasonable limit
     
     if (requests.length === 0) return [];
     
@@ -139,7 +139,7 @@ export const listByRequester = query({
     const requests = await ctx.db
       .query("tradeRequests")
       .withIndex("by_requester", q => q.eq("requesterId", args.requesterId))
-      .collect();
+      .take(500); // Reasonable limit
     
     if (requests.length === 0) return [];
     
@@ -268,13 +268,13 @@ export const updateStatus = mutation({
         .query("tradeRequests")
         .withIndex("by_trade_post", q => q.eq("tradePostId", post._id))
         .filter(q => q.neq(q.field("_id"), args.id))
-        .collect();
+        .take(200); // Reasonable limit
       
-      for (const req of otherRequests) {
-        if (req.status === "pending") {
-          await ctx.db.patch(req._id, { status: "declined" });
-        }
-      }
+      // Batch update pending requests
+      const pendingRequests = otherRequests.filter(req => req.status === "pending");
+      await Promise.all(pendingRequests.map(req => 
+        ctx.db.patch(req._id, { status: "declined" })
+      ));
 
       // Delete old chats between these 2 traders
       const hostId = post.traderId;
@@ -285,13 +285,13 @@ export const updateStatus = mutation({
         .query("chats")
         .withIndex("by_host", q => q.eq("traderHostId", hostId))
         .filter(q => q.eq(q.field("traderGuestId"), guestId))
-        .collect();
+        .take(100); // Reasonable limit
       
       const oldChatsAsGuest = await ctx.db
         .query("chats")
         .withIndex("by_host", q => q.eq("traderHostId", guestId))
         .filter(q => q.eq(q.field("traderGuestId"), hostId))
-        .collect();
+        .take(100); // Reasonable limit
       
       const oldChats = [...oldChatsAsHost, ...oldChatsAsGuest];
       
