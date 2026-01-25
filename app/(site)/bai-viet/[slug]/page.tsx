@@ -23,6 +23,45 @@ function extractTextFromHTML(html: string, maxLength: number = 200): string {
   return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
 }
 
+function stripHTMLTags(html: string): string {
+  return html
+    .replace(/<h1[^>]*>/g, '# ')
+    .replace(/<\/h1>/g, '\n\n')
+    .replace(/<h2[^>]*>/g, '## ')
+    .replace(/<\/h2>/g, '\n\n')
+    .replace(/<h3[^>]*>/g, '### ')
+    .replace(/<\/h3>/g, '\n\n')
+    .replace(/<h4[^>]*>/g, '#### ')
+    .replace(/<\/h4>/g, '\n\n')
+    .replace(/<h5[^>]*>/g, '##### ')
+    .replace(/<\/h5>/g, '\n\n')
+    .replace(/<h6[^>]*>/g, '###### ')
+    .replace(/<\/h6>/g, '\n\n')
+    .replace(/<p[^>]*>/g, '')
+    .replace(/<\/p>/g, '\n\n')
+    .replace(/<br\s*\/?>/g, '\n')
+    .replace(/<strong[^>]*>|<b[^>]*>/g, '**')
+    .replace(/<\/strong>|<\/b>/g, '**')
+    .replace(/<em[^>]*>|<i[^>]*>/g, '*')
+    .replace(/<\/em>|<\/i>/g, '*')
+    .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/g, '[$2]($1)')
+    .replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/g, '![$2]($1)')
+    .replace(/<img[^>]*src="([^"]*)"[^>]*>/g, '![]($1)')
+    .replace(/<ul[^>]*>/g, '\n')
+    .replace(/<\/ul>/g, '\n')
+    .replace(/<ol[^>]*>/g, '\n')
+    .replace(/<\/ol>/g, '\n')
+    .replace(/<li[^>]*>/g, '- ')
+    .replace(/<\/li>/g, '\n')
+    .replace(/<code[^>]*>/g, '`')
+    .replace(/<\/code>/g, '`')
+    .replace(/<pre[^>]*>/g, '```\n')
+    .replace(/<\/pre>/g, '\n```\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function updateMetaTags(title: string, description: string, imageUrl?: string) {
   if (typeof document === 'undefined') return;
   
@@ -193,7 +232,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
             {post.isMarkdown ? (
               <div className="prose prose-slate dark:prose-invert max-w-none prose-img:rounded-xl prose-headings:text-slate-900 dark:prose-headings:text-white prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-a:text-teal-600 dark:prose-a:text-teal-400 prose-table:border prose-table:border-slate-200 dark:prose-table:border-slate-700 prose-th:bg-slate-100 dark:prose-th:bg-slate-800 prose-th:border dark:prose-th:border-slate-200 dark:prose-th:border-slate-700 prose-td:border prose-td:border-slate-200 dark:prose-td:border-slate-700">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {post.content}
+                  {stripHTMLTags(post.content)}
                 </ReactMarkdown>
               </div>
             ) : (
