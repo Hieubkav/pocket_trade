@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Search, Filter, Calendar, Eye } from 'lucide-react';
+import { Search, Filter, Calendar, Eye, ChevronDown } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useLocale } from '@/app/contexts/LocaleContext';
@@ -15,10 +15,14 @@ function formatDate(timestamp: number) {
   });
 }
 
+type SortOption = 'newest' | 'oldest' | 'a-z' | 'z-a';
+
 export default function PostsListPage() {
   const { t } = useLocale();
   const [search, setSearch] = useState('');
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [showSortMenu, setShowSortMenu] = useState(false);
   
   const result = useQuery(api.posts.getPublished, {
     paginationOpts: { numItems: 12, cursor: currentCursor },
@@ -27,12 +31,41 @@ export default function PostsListPage() {
   const posts = result?.page || [];
   const hasMore = result?.isDone === false;
   const continueCursor = result?.continueCursor;
+  const isLoading = result === undefined;
 
   const filtered = useMemo(() => {
     if (!posts) return [];
-    if (!search) return posts;
-    return posts.filter(p => p.title.toLowerCase().includes(search.toLowerCase()));
-  }, [posts, search]);
+    let filtered = posts;
+    
+    if (search) {
+      filtered = filtered.filter(p => p.title.toLowerCase().includes(search.toLowerCase()));
+    }
+    
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case 'newest':
+        sorted.sort((a, b) => b.createdAt - a.createdAt);
+        break;
+      case 'oldest':
+        sorted.sort((a, b) => a.createdAt - b.createdAt);
+        break;
+      case 'a-z':
+        sorted.sort((a, b) => a.title.localeCompare(b.title, 'vi'));
+        break;
+      case 'z-a':
+        sorted.sort((a, b) => b.title.localeCompare(a.title, 'vi'));
+        break;
+    }
+    
+    return sorted;
+  }, [posts, search, sortBy]);
+
+  const sortOptions = [
+    { value: 'newest', label: 'Mới nhất' },
+    { value: 'oldest', label: 'Cũ nhất' },
+    { value: 'a-z', label: 'A - Z' },
+    { value: 'z-a', label: 'Z - A' },
+  ] as const;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
@@ -51,10 +84,48 @@ export default function PostsListPage() {
                 className="w-full h-11 pl-11 pr-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 dark:text-slate-200 transition-all"
               />
             </div>
+            
+            <div className="relative">
+              <button
+                onClick={() => setShowSortMenu(!showSortMenu)}
+                className="flex items-center gap-2 h-11 px-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-teal-500 transition-all min-w-[140px]"
+              >
+                <Filter className="w-4 h-4" />
+                <span>{sortOptions.find(opt => opt.value === sortBy)?.label}</span>
+                <ChevronDown className="w-4 h-4 ml-auto" />
+              </button>
+              
+              {showSortMenu && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setShowSortMenu(false)}
+                  />
+                  <div className="absolute right-0 top-full mt-2 w-40 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-lg z-20 overflow-hidden">
+                    {sortOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          setSortBy(option.value);
+                          setShowSortMenu(false);
+                        }}
+                        className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
+                          sortBy === option.value
+                            ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 font-medium'
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        {!posts ? (
+        {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-pulse">

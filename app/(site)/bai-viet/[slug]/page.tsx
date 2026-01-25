@@ -1,11 +1,12 @@
 'use client';
 
-import React, { use } from 'react';
+import React, { use, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Calendar, ArrowLeft, Eye } from 'lucide-react';
+import { ChevronRight, Calendar, ArrowLeft, Eye, Share2 } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
+import { toast } from 'sonner';
 
 function formatDate(timestamp: number) {
   return new Date(timestamp).toLocaleDateString('vi-VN', {
@@ -13,6 +14,50 @@ function formatDate(timestamp: number) {
     month: 'long',
     day: 'numeric',
   });
+}
+
+function extractTextFromHTML(html: string, maxLength: number = 200): string {
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+}
+
+function updateMetaTags(title: string, description: string, imageUrl?: string) {
+  if (typeof document === 'undefined') return;
+  
+  const url = window.location.href;
+  
+  const metaTags = [
+    { property: 'og:title', content: title },
+    { property: 'og:description', content: description },
+    { property: 'og:url', content: url },
+    { property: 'og:type', content: 'article' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: title },
+    { name: 'twitter:description', content: description },
+  ];
+  
+  if (imageUrl) {
+    metaTags.push(
+      { property: 'og:image', content: imageUrl },
+      { name: 'twitter:image', content: imageUrl }
+    );
+  }
+  
+  metaTags.forEach(({ property, name, content }) => {
+    const selector = property ? `meta[property="${property}"]` : `meta[name="${name}"]`;
+    let meta = document.querySelector(selector);
+    
+    if (!meta) {
+      meta = document.createElement('meta');
+      if (property) meta.setAttribute('property', property);
+      if (name) meta.setAttribute('name', name);
+      document.head.appendChild(meta);
+    }
+    
+    meta.setAttribute('content', content);
+  });
+  
+  document.title = title;
 }
 
 export default function PostDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -23,10 +68,30 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
     paginationOpts: { numItems: 3, cursor: null },
   });
 
+  const handleShareFacebook = () => {
+    if (!post) return;
+    
+    const url = window.location.href;
+    const title = post.title;
+    const description = extractTextFromHTML(post.content, 150);
+    
+    const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(`${title}\n\n${description}`)}`;
+    
+    window.open(shareUrl, '_blank', 'width=600,height=400');
+    toast.success('Đã mở cửa sổ chia sẻ Facebook');
+  };
+  
+  useEffect(() => {
+    if (post) {
+      const description = extractTextFromHTML(post.content, 200);
+      updateMetaTags(post.title, description, post.imageUrl);
+    }
+  }, [post]);
+
   if (post === undefined) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
             <div className="h-64 bg-slate-200 dark:bg-slate-800 rounded" />
@@ -68,7 +133,7 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <button
             onClick={() => router.back()}
             className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -76,10 +141,18 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
             <ArrowLeft size={20} />
             <span className="font-medium">Quay lại</span>
           </button>
+          
+          <button
+            onClick={handleShareFacebook}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            <Share2 size={18} />
+            <span>Chia sẻ Facebook</span>
+          </button>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <nav className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
           <Link href="/" className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors">
             Trang chủ

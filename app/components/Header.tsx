@@ -28,7 +28,7 @@ const Header: React.FC<HeaderProps> = ({ currentView }) => {
   const navItems = [
     { id: 'trade', label: t.nav.trade, icon: ArrowLeftRight, href: '/' },
     { id: 'library', label: t.nav.library, icon: LayoutGrid, href: '/library' },
-    { id: 'posts', label: 'Bài viết', icon: FileText, href: '/bai-viet' },
+    { id: 'posts', label: 'BÀI VIẾT', icon: FileText, href: '/bai-viet' },
     { id: 'chat', label: t.nav.chat, icon: MessageSquare, href: '/chat' },
     { id: 'profile', label: t.nav.profile, icon: User, href: '/profile' },
   ] as const;
