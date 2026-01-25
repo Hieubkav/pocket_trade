@@ -19,7 +19,9 @@ type SortOption = 'newest' | 'oldest' | 'a-z' | 'z-a';
 
 export default function PostsListPage() {
   const { t } = useLocale();
+  const categories = useQuery(api.postCategories.list);
   const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -60,6 +62,11 @@ export default function PostsListPage() {
     return sorted;
   }, [posts, search, sortBy]);
 
+  const handleCategoryChange = (categoryId: string | null) => {
+    setSelectedCategory(categoryId);
+    setCurrentCursor(null); // Reset pagination when changing category
+  };
+
   const sortOptions = [
     { value: 'newest', label: 'Mới nhất' },
     { value: 'oldest', label: 'Cũ nhất' },
@@ -71,6 +78,35 @@ export default function PostsListPage() {
     <div className="space-y-6">
         <div className="flex flex-col gap-4">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Bài Viết</h1>
+          
+          {/* Categories Filter */}
+          {categories && categories.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleCategoryChange(null)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  selectedCategory === null
+                    ? 'bg-teal-600 text-white shadow-md'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+              >
+                Tất cả
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat._id}
+                  onClick={() => handleCategoryChange(cat._id)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    selectedCategory === cat._id
+                      ? 'bg-teal-600 text-white shadow-md'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
           
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">

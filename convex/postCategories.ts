@@ -156,3 +156,41 @@ export const syncPostCategories = mutation({
     }
   },
 });
+
+// Get posts by category (for public page)
+export const getPostsByCategory = query({
+  args: { 
+    categoryId: v.id("postCategories"),
+    paginationOpts: v.optional(v.object({
+      numItems: v.number(),
+      cursor: v.union(v.string(), v.null()),
+    })),
+  },
+  handler: async (ctx, { categoryId, paginationOpts }) => {
+    const limit = paginationOpts?.numItems || 20;
+    
+    // Get pivot records for this category
+    const pivots = await ctx.db
+      .query("postCategoryPivot")
+      .withIndex("by_category", (q) => q.eq("categoryId", categoryId))
+      .collect();
+    
+    // Get all post IDs
+    const postIds = pivots.map(p => p.postId);
+    
+    // Fetch posts and filter published
+    const posts = await Promise.all(
+      postIds.map(async (postId) => {
+        const post = await ctx.db.get(postId);
+        return post;
+      })
+    );
+    
+    // Filter published and sort by date desc
+    const published = posts
+      .filter((p): p is NonNullable<typeof p> => p !== null && p.isPublished)
+      .sort((a, b) => b.createdAt - a.createdAt);
+    
+    return published;
+  },
+});
