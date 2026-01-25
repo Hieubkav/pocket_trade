@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Settings2 } from 'lucide-react';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
@@ -19,6 +19,14 @@ export default function PostsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'' | 'published' | 'draft'>('');
   const [selectedIds, setSelectedIds] = useState<Set<Id<"posts">>>(new Set());
+  const [visibleColumns, setVisibleColumns] = useState({
+    image: true,
+    title: true,
+    slug: false,
+    createdAt: false,
+    isPublished: true,
+  });
+  const [showColumnMenu, setShowColumnMenu] = useState(false);
 
   const filtered = useMemo(() => {
     if (!posts) return [];
@@ -99,6 +107,32 @@ export default function PostsPage() {
             <option value="published">Đã xuất bản</option>
             <option value="draft">Bản nháp</option>
           </select>
+          <div className="relative">
+            <button
+              onClick={() => setShowColumnMenu(!showColumnMenu)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium"
+            >
+              <Settings2 size={16} />
+              <span>Cột</span>
+            </button>
+            {showColumnMenu && (
+              <div className="absolute right-0 top-12 w-48 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 p-2 z-10">
+                {Object.entries(visibleColumns).map(([key, value]) => (
+                  <label key={key} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={value}
+                      onChange={(e) => setVisibleColumns(prev => ({ ...prev, [key]: e.target.checked }))}
+                      className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-300 capitalize">
+                      {key === 'image' ? 'Hình ảnh' : key === 'title' ? 'Tiêu đề' : key === 'slug' ? 'Slug' : key === 'createdAt' ? 'Ngày tạo' : 'Trạng thái'}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
           {selectedIds.size > 0 && (
             <button
               onClick={handleBulkDelete}
@@ -122,21 +156,32 @@ export default function PostsPage() {
                     className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                   />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bài viết</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Slug</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ngày tạo</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trạng thái</th>
+                {visibleColumns.image && (
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-20">Ảnh</th>
+                )}
+                {visibleColumns.title && (
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tiêu đề</th>
+                )}
+                {visibleColumns.slug && (
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Slug</th>
+                )}
+                {visibleColumns.createdAt && (
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Ngày tạo</th>
+                )}
+                {visibleColumns.isPublished && (
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trạng thái</th>
+                )}
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {!posts ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">Đang tải...</td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                     {search || statusFilter ? 'Không tìm thấy bài viết nào' : 'Chưa có bài viết nào'}
                   </td>
                 </tr>
@@ -150,8 +195,8 @@ export default function PostsPage() {
                       className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                     />
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-3">
+                  {visibleColumns.image && (
+                    <td className="px-4 py-4">
                       {post.imageUrl ? (
                         <img src={post.imageUrl} alt={post.title} className="h-10 w-16 rounded object-cover" />
                       ) : (
@@ -159,20 +204,30 @@ export default function PostsPage() {
                           IMG
                         </div>
                       )}
+                    </td>
+                  )}
+                  {visibleColumns.title && (
+                    <td className="px-4 py-4">
                       <p className="font-medium text-slate-900 dark:text-white">{post.title}</p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{post.slug}</td>
-                  <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{formatDate(post.createdAt)}</td>
-                  <td className="px-4 py-4">
-                    <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
-                      post.isPublished
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                        : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
-                    }`}>
-                      {post.isPublished ? 'Đã xuất bản' : 'Bản nháp'}
-                    </span>
-                  </td>
+                    </td>
+                  )}
+                  {visibleColumns.slug && (
+                    <td className="px-4 py-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{post.slug}</td>
+                  )}
+                  {visibleColumns.createdAt && (
+                    <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{formatDate(post.createdAt)}</td>
+                  )}
+                  {visibleColumns.isPublished && (
+                    <td className="px-4 py-4">
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${
+                        post.isPublished
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                      }`}>
+                        {post.isPublished ? 'Đã xuất bản' : 'Bản nháp'}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-4 py-4">
                     <div className="flex items-center justify-end gap-1">
                       <Link 

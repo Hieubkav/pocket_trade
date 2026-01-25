@@ -2,13 +2,13 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { LayoutGrid, MessageSquare, User, ArrowLeftRight } from 'lucide-react';
+import { LayoutGrid, MessageSquare, User, ArrowLeftRight, FileText } from 'lucide-react';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 
 interface BottomNavProps {
-  currentView: 'library' | 'trade' | 'chat' | 'profile';
+  currentView: 'library' | 'trade' | 'chat' | 'profile' | 'posts';
 }
 
 const BottomNav: React.FC<BottomNavProps> = ({ currentView }) => {
@@ -28,6 +28,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ currentView }) => {
   const tabs = [
     { id: 'trade', icon: ArrowLeftRight, href: '/' },
     { id: 'library', icon: LayoutGrid, href: '/library' },
+    { id: 'posts', icon: FileText, href: '/bai-viet' },
     { id: 'chat', icon: MessageSquare, href: '/chat' },
     { id: 'profile', icon: User, href: '/profile' },
   ] as const;

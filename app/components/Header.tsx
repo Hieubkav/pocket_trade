@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { LayoutGrid, MessageSquare, User, ArrowLeftRight, LogIn, LogOut } from 'lucide-react';
+import { LayoutGrid, MessageSquare, User, ArrowLeftRight, LogIn, LogOut, FileText } from 'lucide-react';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
 import { useLocale } from '../contexts/LocaleContext';
 import { useQuery } from 'convex/react';
@@ -10,7 +10,7 @@ import { api } from '../../convex/_generated/api';
 import LocaleSwitcher from './LocaleSwitcher';
 
 interface HeaderProps {
-  currentView: 'library' | 'trade' | 'chat' | 'profile';
+  currentView: 'library' | 'trade' | 'chat' | 'profile' | 'posts';
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView }) => {
@@ -28,6 +28,7 @@ const Header: React.FC<HeaderProps> = ({ currentView }) => {
   const navItems = [
     { id: 'trade', label: t.nav.trade, icon: ArrowLeftRight, href: '/' },
     { id: 'library', label: t.nav.library, icon: LayoutGrid, href: '/library' },
+    { id: 'posts', label: 'Bài viết', icon: FileText, href: '/bai-viet' },
     { id: 'chat', label: t.nav.chat, icon: MessageSquare, href: '/chat' },
     { id: 'profile', label: t.nav.profile, icon: User, href: '/profile' },
   ] as const;

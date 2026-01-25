@@ -7,11 +7,12 @@ import Header from './Header';
 export default function NavigationWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   
-  const isDetailPage = pathname.startsWith('/card/') || pathname.startsWith('/chat/') && pathname !== '/chat';
+  const isDetailPage = pathname.startsWith('/card/') || pathname.startsWith('/chat/') && pathname !== '/chat' || pathname.startsWith('/bai-viet/') && pathname !== '/bai-viet';
   
-  const getCurrentView = (): 'library' | 'trade' | 'chat' | 'profile' => {
+  const getCurrentView = (): 'library' | 'trade' | 'chat' | 'profile' | 'posts' => {
     if (pathname === '/' || pathname.startsWith('/trade')) return 'trade';
     if (pathname === '/library') return 'library';
+    if (pathname.startsWith('/bai-viet')) return 'posts';
     if (pathname.startsWith('/chat')) return 'chat';
     if (pathname === '/profile') return 'profile';
     return 'trade';

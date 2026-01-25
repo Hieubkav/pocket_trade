@@ -194,7 +194,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_slug", ["slug"])
-    .index("by_published", ["isPublished"]),
+    .index("by_published", ["isPublished"])
+    .index("by_published_date", ["isPublished", "createdAt"]),
 
   // 18. Files (track uploaded files for cleanup)
   files: defineTable({
