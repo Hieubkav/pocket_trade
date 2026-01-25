@@ -7,6 +7,7 @@ import { api } from '@/convex/_generated/api';
 import { Plus, Clock, ArrowRightLeft, Loader2, Filter, ChevronDown, ChevronLeft, ChevronRight, Search, X, MessageCircle, Check, XCircle, User } from 'lucide-react';
 import { useTraderAuth } from '../contexts/TraderAuthContext';
 import { useLocale } from '../contexts/LocaleContext';
+import EventBanner from './EventBanner';
 
 type TabType = 'public-offers' | 'my-offers' | 'my-requests' | 'history';
 
@@ -183,6 +184,9 @@ const ExchangePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
+      {/* Event Banner Popup */}
+      <EventBanner />
+
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <h1 className="text-lg font-black text-slate-900">{t.trade.title}</h1>

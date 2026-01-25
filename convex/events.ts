@@ -105,3 +105,32 @@ export const bulkRemove = mutation({
     return { deleted: args.ids.length };
   },
 });
+
+export const getActiveEvent = query({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    
+    // Filter: isActive = true AND startDate <= now <= endDate
+    const event = await ctx.db
+      .query("events")
+      .withIndex("by_active", (q) => q.eq("isActive", true))
+      .first();
+    
+    if (!event) return null;
+    
+    // Client-side date validation để tránh query không cần thiết
+    if (event.startDate > now || event.endDate < now) {
+      return null;
+    }
+    
+    // Chỉ trả về fields cần thiết để tiết kiệm bandwidth
+    return {
+      _id: event._id,
+      name: event.name,
+      imageUrl: event.imageUrl,
+      startDate: event.startDate,
+      endDate: event.endDate,
+    };
+  },
+});
