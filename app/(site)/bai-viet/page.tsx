@@ -40,6 +40,9 @@ export default function PostsListPage() {
     ? (categoryFilteredPosts || [])
     : (allPublishedPosts?.page || []);
   
+  const hasMore = !selectedCategory && allPublishedPosts?.hasMore;
+  const continueCursor = !selectedCategory ? allPublishedPosts?.continueCursor : null;
+  
   const isLoading = selectedCategory 
     ? categoryFilteredPosts === undefined
     : allPublishedPosts === undefined;
