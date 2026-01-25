@@ -31,6 +31,7 @@ export default function NewPostPage() {
   const [imageUrl, setImageUrl] = useState('');
   const [content, setContent] = useState('');
   const [isPublished, setIsPublished] = useState(false);
+  const [isMarkdown, setIsMarkdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleTitleChange = (value: string) => {
@@ -54,6 +55,7 @@ export default function NewPostPage() {
         content,
         imageUrl: imageUrl || undefined,
         isPublished,
+        isMarkdown,
       });
       
       if (imageUrl && imageUrl.includes('convex.cloud')) {
@@ -141,6 +143,20 @@ export default function NewPostPage() {
                 />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Xuất bản ngay
+                </span>
+              </label>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isMarkdown}
+                  onChange={(e) => setIsMarkdown(e.target.checked)}
+                  className="w-5 h-5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Render as Markdown (bảng, code blocks, etc.)
                 </span>
               </label>
             </div>

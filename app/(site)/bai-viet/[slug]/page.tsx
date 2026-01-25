@@ -7,6 +7,8 @@ import { ChevronRight, Calendar, ArrowLeft, Eye, Share2 } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { toast } from 'sonner';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 function formatDate(timestamp: number) {
   return new Date(timestamp).toLocaleDateString('vi-VN', {
@@ -188,10 +190,18 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
 
             <div className="h-px bg-slate-200 dark:bg-slate-800" />
 
-            <div 
-              className="prose prose-slate dark:prose-invert max-w-none prose-img:rounded-xl prose-headings:text-slate-900 dark:prose-headings:text-white prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-a:text-teal-600 dark:prose-a:text-teal-400"
-              dangerouslySetInnerHTML={{ __html: post.content }}
-            />
+            {post.isMarkdown ? (
+              <div className="prose prose-slate dark:prose-invert max-w-none prose-img:rounded-xl prose-headings:text-slate-900 dark:prose-headings:text-white prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-a:text-teal-600 dark:prose-a:text-teal-400 prose-table:border prose-table:border-slate-200 dark:prose-table:border-slate-700 prose-th:bg-slate-100 dark:prose-th:bg-slate-800 prose-th:border dark:prose-th:border-slate-200 dark:prose-th:border-slate-700 prose-td:border prose-td:border-slate-200 dark:prose-td:border-slate-700">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {post.content}
+                </ReactMarkdown>
+              </div>
+            ) : (
+              <div 
+                className="prose prose-slate dark:prose-invert max-w-none prose-img:rounded-xl prose-headings:text-slate-900 dark:prose-headings:text-white prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-a:text-teal-600 dark:prose-a:text-teal-400"
+                dangerouslySetInnerHTML={{ __html: post.content }}
+              />
+            )}
           </div>
         </article>
 

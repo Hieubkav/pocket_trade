@@ -191,6 +191,7 @@ export default defineSchema({
     content: v.string(), // HTML from Lexical
     imageUrl: v.optional(v.string()),
     isPublished: v.boolean(),
+    isMarkdown: v.optional(v.boolean()), // true = render as markdown, false/undefined = render as HTML
     createdAt: v.number(),
   })
     .index("by_slug", ["slug"])

@@ -51,6 +51,7 @@ export const create = mutation({
     content: v.string(),
     imageUrl: v.optional(v.string()),
     isPublished: v.boolean(),
+    isMarkdown: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db
@@ -75,6 +76,7 @@ export const update = mutation({
     content: v.string(),
     imageUrl: v.optional(v.string()),
     isPublished: v.boolean(),
+    isMarkdown: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { id, ...data } = args;

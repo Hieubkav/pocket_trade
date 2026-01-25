@@ -27,6 +27,7 @@ export default function EditPostPage() {
   const [imageUrl, setImageUrl] = useState('');
   const [content, setContent] = useState('');
   const [isPublished, setIsPublished] = useState(false);
+  const [isMarkdown, setIsMarkdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSlugEditor, setShowSlugEditor] = useState(false);
   const originalImageUrl = useRef<string>('');
@@ -38,6 +39,7 @@ export default function EditPostPage() {
       setImageUrl(post.imageUrl || '');
       setContent(post.content);
       setIsPublished(post.isPublished);
+      setIsMarkdown(post.isMarkdown || false);
       originalImageUrl.current = post.imageUrl || '';
     }
   }, [post]);
@@ -57,6 +59,7 @@ export default function EditPostPage() {
         content,
         imageUrl: imageUrl || undefined,
         isPublished,
+        isMarkdown,
       });
       
       const usedByKey = `posts:${id}`;
@@ -174,6 +177,20 @@ export default function EditPostPage() {
                 />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Xuất bản
+                </span>
+              </label>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isMarkdown}
+                  onChange={(e) => setIsMarkdown(e.target.checked)}
+                  className="w-5 h-5 rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  Render as Markdown (bảng, code blocks, etc.)
                 </span>
               </label>
             </div>
