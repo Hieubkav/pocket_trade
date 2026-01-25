@@ -29,10 +29,10 @@ export default function PostsListPage() {
   
   // Fetch posts based on selected category
   const allPublishedPosts = useQuery(api.posts.getPublished, {
-    paginationOpts: { numItems: 100, cursor: null }, // Get more for client-side filtering
+    paginationOpts: { numItems: 100, cursor: null },
   });
   const categoryFilteredPosts = useQuery(
-    selectedCategory ? api.postCategories.getPostsByCategory : null,
+    api.postCategories.getPostsByCategory,
     selectedCategory ? { categoryId: selectedCategory as any } : "skip"
   );
 
