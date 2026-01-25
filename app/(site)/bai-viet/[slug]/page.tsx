@@ -229,10 +229,10 @@ export default function PostDetailPage({ params }: { params: Promise<{ slug: str
 
             <div className="h-px bg-slate-200 dark:bg-slate-800" />
 
-            {post.isMarkdown ? (
-              <div className="prose prose-slate dark:prose-invert max-w-none prose-img:rounded-xl prose-headings:text-slate-900 dark:prose-headings:text-white prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-a:text-teal-600 dark:prose-a:text-teal-400 prose-table:border prose-table:border-slate-200 dark:prose-table:border-slate-700 prose-th:bg-slate-100 dark:prose-th:bg-slate-800 prose-th:border dark:prose-th:border-slate-200 dark:prose-th:border-slate-700 prose-td:border prose-td:border-slate-200 dark:prose-td:border-slate-700">
+            {post.isMarkdown && post.markdownContent ? (
+              <div className="prose prose-slate dark:prose-invert max-w-none prose-img:rounded-xl prose-headings:text-slate-900 dark:prose-headings:text-white prose-p:text-slate-700 dark:prose-p:text-slate-300 prose-a:text-teal-600 dark:prose-a:text-teal-400 prose-table:border prose-table:border-slate-200 dark:prose-table:border-slate-700 prose-th:bg-slate-100 dark:prose-th:bg-slate-800 prose-th:border dark:prose-th:border-slate-200 dark:prose-th:border-slate-700 prose-td:border prose-td:border-slate-200 dark:prose-td:border-slate-700 prose-td:p-2 prose-th:p-2">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {stripHTMLTags(post.content)}
+                  {post.markdownContent}
                 </ReactMarkdown>
               </div>
             ) : (

@@ -26,6 +26,7 @@ export default function EditPostPage() {
   const [slug, setSlug] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [content, setContent] = useState('');
+  const [markdownContent, setMarkdownContent] = useState('');
   const [isPublished, setIsPublished] = useState(false);
   const [isMarkdown, setIsMarkdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,6 +39,7 @@ export default function EditPostPage() {
       setSlug(post.slug);
       setImageUrl(post.imageUrl || '');
       setContent(post.content);
+      setMarkdownContent(post.markdownContent || '');
       setIsPublished(post.isPublished);
       setIsMarkdown(post.isMarkdown || false);
       originalImageUrl.current = post.imageUrl || '';
@@ -57,6 +59,7 @@ export default function EditPostPage() {
         title,
         slug,
         content,
+        markdownContent: isMarkdown ? markdownContent : undefined,
         imageUrl: imageUrl || undefined,
         isPublished,
         isMarkdown,
@@ -166,6 +169,23 @@ export default function EditPostPage() {
                 postId={id}
               />
             </div>
+
+            {isMarkdown && (
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Markdown Content (Raw) - Paste markdown gốc vào đây
+                </label>
+                <textarea
+                  value={markdownContent}
+                  onChange={(e) => setMarkdownContent(e.target.value)}
+                  placeholder="# Heading&#10;&#10;**Bold text**&#10;&#10;| Column 1 | Column 2 |&#10;|----------|----------|&#10;| Data 1   | Data 2   |"
+                  className="w-full h-64 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-slate-200 font-mono resize-y"
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Chỉ dùng khi tick "Render as Markdown". Paste markdown gốc vào đây để render đúng bảng, code blocks.
+                </p>
+              </div>
+            )}
 
             <div className="md:col-span-2">
               <label className="flex items-center gap-3 cursor-pointer">

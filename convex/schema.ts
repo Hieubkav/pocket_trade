@@ -189,6 +189,7 @@ export default defineSchema({
     title: v.string(),
     slug: v.string(),
     content: v.string(), // HTML from Lexical
+    markdownContent: v.optional(v.string()), // Raw markdown text (khi import từ .md)
     imageUrl: v.optional(v.string()),
     isPublished: v.boolean(),
     isMarkdown: v.optional(v.boolean()), // true = render as markdown, false/undefined = render as HTML
