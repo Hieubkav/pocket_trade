@@ -18,6 +18,7 @@ import type * as files from "../files.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as packs from "../packs.js";
+import type * as postCategories from "../postCategories.js";
 import type * as posts from "../posts.js";
 import type * as rarities from "../rarities.js";
 import type * as seed from "../seed.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   messages: typeof messages;
   packs: typeof packs;
+  postCategories: typeof postCategories;
   posts: typeof posts;
   rarities: typeof rarities;
   seed: typeof seed;

@@ -199,7 +199,25 @@ export default defineSchema({
     .index("by_published", ["isPublished"])
     .index("by_published_date", ["isPublished", "createdAt"]),
 
-  // 18. Files (track uploaded files for cleanup)
+  // 18. Post Categories (Danh mục bài viết)
+  postCategories: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    description: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    order: v.optional(v.number()),
+  }).index("by_slug", ["slug"]),
+
+  // 19. Post-Category Pivot (Many-to-many)
+  postCategoryPivot: defineTable({
+    postId: v.id("posts"),
+    categoryId: v.id("postCategories"),
+  })
+    .index("by_post", ["postId"])
+    .index("by_category", ["categoryId"])
+    .index("by_post_category", ["postId", "categoryId"]),
+
+  // 20. Files (track uploaded files for cleanup)
   files: defineTable({
     storageId: v.id("_storage"),
     url: v.string(),
@@ -210,7 +228,7 @@ export default defineSchema({
     .index("by_used_by", ["usedBy"])
     .index("by_url", ["url"]),
 
-  // 19. OTP Codes (for password reset)
+  // 21. OTP Codes (for password reset)
   otpCodes: defineTable({
     email: v.string(),
     code: v.string(),

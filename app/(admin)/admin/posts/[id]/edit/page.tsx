@@ -18,9 +18,12 @@ export default function EditPostPage() {
   const router = useRouter();
   const id = params.id as Id<"posts">;
   const post = useQuery(api.posts.getById, { id });
+  const postCategories = useQuery(api.postCategories.getPostCategories, { postId: id });
+  const categories = useQuery(api.postCategories.list);
   const updatePost = useMutation(api.posts.update);
   const markFileUsed = useMutation(api.files.markFileUsed);
   const releaseFile = useMutation(api.files.releaseFile);
+  const syncPostCategories = useMutation(api.postCategories.syncPostCategories);
   
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
@@ -29,6 +32,7 @@ export default function EditPostPage() {
   const [markdownContent, setMarkdownContent] = useState('');
   const [isPublished, setIsPublished] = useState(false);
   const [isMarkdown, setIsMarkdown] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSlugEditor, setShowSlugEditor] = useState(false);
   const originalImageUrl = useRef<string>('');
@@ -45,6 +49,12 @@ export default function EditPostPage() {
       originalImageUrl.current = post.imageUrl || '';
     }
   }, [post]);
+
+  useEffect(() => {
+    if (postCategories) {
+      setSelectedCategories(new Set(postCategories.map((c: any) => c._id)));
+    }
+  }, [postCategories]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,12 +85,27 @@ export default function EditPostPage() {
         }
       }
       
+      await syncPostCategories({
+        postId: id,
+        categoryIds: Array.from(selectedCategories) as any[],
+      });
+      
       toast.success('Cập nhật bài viết thành công');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Có lỗi xảy ra');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    const newSelected = new Set(selectedCategories);
+    if (newSelected.has(categoryId)) {
+      newSelected.delete(categoryId);
+    } else {
+      newSelected.add(categoryId);
+    }
+    setSelectedCategories(newSelected);
   };
 
   if (!post) {
@@ -156,6 +181,34 @@ export default function EditPostPage() {
                 Hình ảnh đại diện
               </label>
               <ImageUpload value={imageUrl} onChange={setImageUrl} />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Danh mục
+              </label>
+              {categories && categories.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat._id}
+                      type="button"
+                      onClick={() => toggleCategory(cat._id)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        selectedCategories.has(cat._id)
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Chưa có danh mục. <Link href="/admin/categories" className="text-indigo-600 hover:underline">Tạo danh mục mới</Link>
+                </p>
+              )}
             </div>
 
             <div className="md:col-span-2">

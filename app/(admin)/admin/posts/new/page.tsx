@@ -26,6 +26,9 @@ export default function NewPostPage() {
   const router = useRouter();
   const createPost = useMutation(api.posts.create);
   const markFileUsed = useMutation(api.files.markFileUsed);
+  const syncPostCategories = useMutation(api.postCategories.syncPostCategories);
+  const categories = useQuery(api.postCategories.list);
+  
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -33,6 +36,7 @@ export default function NewPostPage() {
   const [markdownContent, setMarkdownContent] = useState('');
   const [isPublished, setIsPublished] = useState(false);
   const [isMarkdown, setIsMarkdown] = useState(false);
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleTitleChange = (value: string) => {
@@ -64,6 +68,13 @@ export default function NewPostPage() {
         await markFileUsed({ url: imageUrl, usedBy: `posts:${postId}` });
       }
       
+      if (selectedCategories.size > 0) {
+        await syncPostCategories({
+          postId,
+          categoryIds: Array.from(selectedCategories) as any[],
+        });
+      }
+      
       toast.success('Tạo bài viết thành công');
       router.push('/admin/posts');
     } catch (error) {
@@ -71,6 +82,16 @@ export default function NewPostPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const toggleCategory = (categoryId: string) => {
+    const newSelected = new Set(selectedCategories);
+    if (newSelected.has(categoryId)) {
+      newSelected.delete(categoryId);
+    } else {
+      newSelected.add(categoryId);
+    }
+    setSelectedCategories(newSelected);
   };
 
   return (
@@ -122,6 +143,34 @@ export default function NewPostPage() {
                 Hình ảnh đại diện
               </label>
               <ImageUpload value={imageUrl} onChange={setImageUrl} />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                Danh mục
+              </label>
+              {categories && categories.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat._id}
+                      type="button"
+                      onClick={() => toggleCategory(cat._id)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        selectedCategories.has(cat._id)
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Chưa có danh mục. <Link href="/admin/categories" className="text-indigo-600 hover:underline">Tạo danh mục mới</Link>
+                </p>
+              )}
             </div>
 
             <div className="md:col-span-2">
