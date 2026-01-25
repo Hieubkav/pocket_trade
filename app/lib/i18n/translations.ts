@@ -6,6 +6,7 @@ export const translations = {
     nav: {
       trade: 'GIAO DỊCH',
       library: 'THƯ VIỆN',
+      posts: 'BÀI VIẾT',
       chat: 'TRÒ CHUYỆN',
       profile: 'CÁ NHÂN',
       login: 'Đăng nhập',
@@ -206,6 +207,7 @@ export const translations = {
     nav: {
       trade: 'TRADE',
       library: 'LIBRARY',
+      posts: 'POSTS',
       chat: 'CHAT',
       profile: 'PROFILE',
       login: 'Login',
