@@ -525,50 +525,93 @@ const ExchangePage: React.FC = () => {
               </div>
 
               {/* Cards Preview */}
-              <div className="flex items-center gap-2">
-                {/* Have Cards */}
-                <div className="flex-1">
-                  <div className="text-[10px] text-teal-600 font-bold mb-1">{t.trade.have} ({post.haveCardsCount})</div>
-                  <div className="flex gap-1">
-                    {post.haveCards.slice(0, 4).map((card) => (
-                      <img
-                        key={card._id}
-                        src={card.imageUrl}
-                        alt={card.name}
-                        className="w-10 h-14 object-cover rounded border border-teal-200"
-                      />
-                    ))}
-                    {post.haveCardsCount > 4 && (
-                      <div className="w-10 h-14 rounded border border-teal-200 bg-teal-50 flex items-center justify-center text-xs font-bold text-teal-600">
-                        +{post.haveCardsCount - 4}
-                      </div>
-                    )}
+              {post.haveCardsCount <= 3 && post.wantCardsCount <= 3 ? (
+                <div className="mt-2 flex items-center gap-2">
+                  {/* Have Cards */}
+                  <div className="flex-1">
+                    <div className="text-[10px] text-teal-600 font-bold mb-1">{t.trade.have} ({post.haveCardsCount})</div>
+                    <div className="flex gap-1">
+                      {post.haveCards.slice(0, 4).map((card) => (
+                        <img
+                          key={card._id}
+                          src={card.imageUrl}
+                          alt={card.name}
+                          className="w-10 h-14 object-cover rounded border border-teal-200"
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <ArrowRightLeft className="w-4 h-4 text-slate-300 flex-shrink-0" />
+
+                  {/* Want Cards */}
+                  <div className="flex-1">
+                    <div className="text-[10px] text-blue-600 font-bold mb-1">{t.trade.want} ({post.wantCardsCount})</div>
+                    <div className="flex gap-1">
+                      {post.wantCards.slice(0, 4).map((card) => (
+                        <img
+                          key={card._id}
+                          src={card.imageUrl}
+                          alt={card.name}
+                          className="w-10 h-14 object-cover rounded border border-blue-200"
+                        />
+                      ))}
+                    </div>
                   </div>
                 </div>
+              ) : (
+                <div className="mt-2 space-y-2">
+                  {/* Have Cards */}
+                  <div className="rounded-lg border border-teal-100 bg-teal-50/70 p-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-teal-700 font-bold">{t.trade.have}</span>
+                      <span className="text-[10px] text-teal-600 font-bold">{post.haveCardsCount}</span>
+                    </div>
+                    <div className="flex gap-1 overflow-x-auto pb-1">
+                      {post.haveCards.slice(0, 6).map((card) => (
+                        <img
+                          key={card._id}
+                          src={card.imageUrl}
+                          alt={card.name}
+                          className="w-10 h-14 object-cover rounded border border-teal-200 shrink-0"
+                        />
+                      ))}
+                      {post.haveCardsCount > 6 && (
+                        <div className="w-10 h-14 rounded border border-teal-200 bg-teal-100 flex items-center justify-center text-xs font-bold text-teal-700 shrink-0">
+                          +{post.haveCardsCount - 6}
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
-                {/* Arrow */}
-                <ArrowRightLeft className="w-4 h-4 text-slate-300 flex-shrink-0" />
+                  <div className="flex items-center justify-center text-slate-300">
+                    <ArrowRightLeft className="w-4 h-4" />
+                  </div>
 
-                {/* Want Cards */}
-                <div className="flex-1">
-                  <div className="text-[10px] text-blue-600 font-bold mb-1">{t.trade.want} ({post.wantCardsCount})</div>
-                  <div className="flex gap-1">
-                    {post.wantCards.slice(0, 4).map((card) => (
-                      <img
-                        key={card._id}
-                        src={card.imageUrl}
-                        alt={card.name}
-                        className="w-10 h-14 object-cover rounded border border-blue-200"
-                      />
-                    ))}
-                    {post.wantCardsCount > 4 && (
-                      <div className="w-10 h-14 rounded border border-blue-200 bg-blue-50 flex items-center justify-center text-xs font-bold text-blue-600">
-                        +{post.wantCardsCount - 4}
-                      </div>
-                    )}
+                  {/* Want Cards */}
+                  <div className="rounded-lg border border-blue-100 bg-blue-50/70 p-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-blue-700 font-bold">{t.trade.want}</span>
+                      <span className="text-[10px] text-blue-600 font-bold">{post.wantCardsCount}</span>
+                    </div>
+                    <div className="flex gap-1 overflow-x-auto pb-1">
+                      {post.wantCards.slice(0, 6).map((card) => (
+                        <img
+                          key={card._id}
+                          src={card.imageUrl}
+                          alt={card.name}
+                          className="w-10 h-14 object-cover rounded border border-blue-200 shrink-0"
+                        />
+                      ))}
+                      {post.wantCardsCount > 6 && (
+                        <div className="w-10 h-14 rounded border border-blue-200 bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-700 shrink-0">
+                          +{post.wantCardsCount - 6}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           ))
         )}
