@@ -157,8 +157,8 @@ const SETS: SetDefinition[] = [
     setCode: "B2",
     name: "Fantastical Parade",
     seriesName: "B Series",
-    logoUrl: "https://raw.githubusercontent.com/flibustier/pokemon-tcg-pocket-database/main/dist/images/sets/LOGO_expansion_B2_en_US.webp",
-    packs: [{ name: "Gardevoir", imageUrl: "" }],
+    logoUrl: "/images/logos/B2.webp",
+    packs: [{ name: "Gardevoir", imageUrl: "/images/packs/gardevoir.webp" }],
     data: B2_data,
   },
   {
@@ -566,9 +566,7 @@ export const seedSet = mutation({
         subtype = card.trainerType;
       }
       const type = card.types?.[0] || "";
-      const imageUrl = setCode === "B2" && card.image
-        ? card.image
-        : getImageUrl(setCode, card.localId, card.name);
+      const imageUrl = getImageUrl(setCode, card.localId, card.name);
 
       // Determine pack based on booster (if available)
       let packId = defaultPackId;
@@ -693,9 +691,7 @@ export const seedAll = mutation({
           subtype = card.trainerType;
         }
         const type = card.types?.[0] || "";
-        const imageUrl = setDef.setCode === "B2" && card.image
-          ? card.image
-          : getImageUrl(setDef.setCode, card.localId, card.name);
+        const imageUrl = getImageUrl(setDef.setCode, card.localId, card.name);
 
         let packId = defaultPackId;
         if (card.boosters && card.boosters.length > 0 && packIds.length > 1) {
